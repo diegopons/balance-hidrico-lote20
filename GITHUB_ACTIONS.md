@@ -62,7 +62,7 @@ nadie puede leerlas mirando el repositorio.
 En tu repo: **Settings** (arriba) → en el menú izquierdo,
 **Secrets and variables** → **Actions** → botón **New repository secret**.
 
-Cargá estos cuatro, uno por uno:
+Cargá estos seis, uno por uno:
 
 | Name | Secret (valor) |
 |---|---|
@@ -70,8 +70,11 @@ Cargá estos cuatro, uno por uno:
 | `CDSE_CLIENT_SECRET` | el client secret de Copernicus Data Space |
 | `CDSAPI_URL` | `https://cds.climate.copernicus.eu/api` |
 | `CDSAPI_KEY` | tu API key del Climate Data Store |
+| `TELEGRAM_BOT_TOKEN` | el token de tu bot de Telegram |
+| `TELEGRAM_CHAT_ID` | el chat_id donde querés recibir las alertas |
 
-(Cómo obtener cada una está en la sección 3 del `README.md`.)
+(Cómo obtener las cuatro primeras está en la sección 3 del `README.md`;
+cómo obtener las dos de Telegram está en `TELEGRAM.md`.)
 
 ## Paso 4 — Probar la primera corrida a mano
 
