@@ -1,0 +1,108 @@
+name: Balance Hídrico Lote 20
+
+# ============================================================================
+# CUÁNDO SE EJECUTA
+# ============================================================================
+on:
+  # 1) Automático, según horario
+  schedule:
+    # Formato cron: minuto hora día-del-mes mes día-de-semana
+    # OJO: GitHub usa siempre horario UTC. Argentina = UTC-3.
+    # "0 9 * * *" = todos los días a las 09:00 UTC = 06:00 en Argentina.
+    - cron: "0 9 * * *"
+
+  # 2) Manual, con un botón en la pestaña "Actions" del repo.
+  #    Muy útil para probar sin esperar al horario.
+  workflow_dispatch:
+
+# Permiso necesario para que el workflow pueda escribir en el repo
+# (guardar el CSV y el estado actualizados).
+permissions:
+  contents: write
+
+jobs:
+  balance-hidrico:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ---------------------------------------------------------------
+      # 1. Descargar el contenido del repositorio a la máquina temporal
+      # ---------------------------------------------------------------
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      # ---------------------------------------------------------------
+      # 2. Instalar Python
+      # ---------------------------------------------------------------
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # ---------------------------------------------------------------
+      # 3. Instalar las librerías del requirements.txt
+      # ---------------------------------------------------------------
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ---------------------------------------------------------------
+      # 4. Correr el balance hídrico
+      #    Las credenciales llegan desde los "Secrets" del repositorio,
+      #    nunca escritas en el código.
+      # ---------------------------------------------------------------
+      - name: Ejecutar balance hídrico
+        env:
+          CDSE_CLIENT_ID: ${{ secrets.CDSE_CLIENT_ID }}
+          CDSE_CLIENT_SECRET: ${{ secrets.CDSE_CLIENT_SECRET }}
+          CDSAPI_URL: ${{ secrets.CDSAPI_URL }}
+          CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python -m src.main
+
+      # ---------------------------------------------------------------
+      # 5. Copiar el CSV a docs/ para que lo lea el tablero web
+      #    (GitHub Pages publica solo el contenido de docs/)
+      # ---------------------------------------------------------------
+      - name: Actualizar los datos del tablero
+        run: |
+          mkdir -p docs
+          if [ -f data/balance_hidrico_lote20.csv ]; then
+            cp data/balance_hidrico_lote20.csv docs/balance_hidrico_lote20.csv
+          fi
+
+      # ---------------------------------------------------------------
+      # 6. Guardar los resultados de vuelta en el repositorio
+      #    Así el estado y el CSV histórico sobreviven entre corridas
+      #    (la máquina temporal se destruye al terminar).
+      # ---------------------------------------------------------------
+      - name: Guardar resultados en el repositorio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ logs/ docs/
+          # Si no hubo días nuevos, no hay nada que commitear: no es un error.
+          if git diff --staged --quiet; then
+            echo "Sin cambios para guardar (probablemente no había días nuevos)."
+          else
+            git commit -m "Balance hídrico automático - $(date -u +'%Y-%m-%d')"
+            git push
+          fi
+
+      # ---------------------------------------------------------------
+      # 6. Dejar el CSV y el log también como archivo descargable
+      #    desde la pestaña Actions (útil para revisar una corrida puntual)
+      # ---------------------------------------------------------------
+      - name: Publicar resultados como artefacto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-balance-hidrico
+          path: |
+            data/
+            logs/
+          retention-days: 30
+          if-no-files-found: ignore
