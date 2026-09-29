@@ -1,4 +1,4 @@
-# Balance Hídrico Periódico — Lote 20
+# Balance Hídrico Periódico 
 
 Versión "de producción" del notebook `balance_hidrico_gee`, pensada para
 correr sola, de forma periódica, en una PC Windows (Task Scheduler). Misma
