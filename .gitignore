@@ -1,0 +1,21 @@
+# Entorno virtual local
+venv/
+.venv/
+
+# Caches de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Credenciales - NUNCA subir al repositorio
+.cdsapirc
+.env
+*.secret
+
+# Temporales del sistema
+.DS_Store
+Thumbs.db
+
+# NOTA: data/ y logs/ SÍ se versionan a propósito.
+# Ahí viven estado.json y el CSV histórico, que es como los resultados
+# sobreviven entre corridas de GitHub Actions.
