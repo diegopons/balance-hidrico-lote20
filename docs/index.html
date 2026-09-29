@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Balance hídrico — Lote 20</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Horizontes del perfil: del más orgánico en superficie al más profundo */
+    --h1:#8A6A44; --h2:#9C7B50; --h3:#AD8C5F; --h4:#BC9C70; --h5:#C9AC83;
+    --agua:#1D5B6B;
+    --agua-claro:#3E8296;
+    --fondo:#E6E9E1;
+    --papel:#F5F6F1;
+    --tinta:#2A2E27;
+    --tinta-suave:#6B7166;
+    --linea:#C7CCC0;
+    --optimo:#3F7245;
+    --adecuado:#8A9B3D;
+    --deficit:#C4762A;
+    --critico:#A63D2E;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--fondo);
+    color:var(--tinta);
+    font-family:Archivo,system-ui,sans-serif;
+    font-size:16px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .envoltorio{max-width:1140px;margin:0 auto;padding:32px 24px 72px}
+
+  /* ---------- encabezado ---------- */
+  .cabecera{
+    display:flex;justify-content:space-between;align-items:baseline;
+    gap:24px;flex-wrap:wrap;
+    padding-bottom:18px;margin-bottom:32px;
+    border-bottom:2px solid var(--tinta);
+  }
+  .cabecera h1{
+    font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0;
+  }
+  .cabecera .meta{font-size:14px;color:var(--tinta-suave)}
+
+  /* ---------- bloque principal ---------- */
+  .principal{
+    display:grid;grid-template-columns:300px 1fr;gap:40px;
+    background:var(--papel);
+    border:1px solid var(--linea);
+    padding:28px;margin-bottom:28px;
+  }
+  @media(max-width:800px){.principal{grid-template-columns:1fr;gap:28px}}
+
+  .estado-titulo{
+    font-size:13px;color:var(--tinta-suave);margin:0 0 4px;
+  }
+  .estado-condicion{
+    font-size:38px;font-weight:800;letter-spacing:-.03em;line-height:1.05;margin:0 0 2px;
+  }
+  .estado-pct{font-size:17px;color:var(--tinta-suave);margin:0 0 24px}
+
+  .cifras{border-top:1px solid var(--linea)}
+  .cifra{
+    display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+    padding:11px 0;border-bottom:1px solid var(--linea);
+  }
+  .cifra dt{font-size:14px;color:var(--tinta-suave);margin:0}
+  .cifra dd{
+    margin:0;font-size:17px;font-weight:600;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+
+  .recomendacion{
+    margin-top:24px;padding:16px 18px;
+    border-left:4px solid var(--deficit);
+    background:#FBF3E9;
+  }
+  .recomendacion.ok{border-left-color:var(--optimo);background:#EFF4EC}
+  .recomendacion h3{margin:0 0 6px;font-size:15px;font-weight:600}
+  .recomendacion .lamina{
+    font-size:30px;font-weight:800;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums;margin:2px 0 4px;
+  }
+  .recomendacion p{margin:6px 0 0;font-size:13.5px;color:var(--tinta-suave);line-height:1.45}
+
+  /* ---------- secciones ---------- */
+  section{margin-bottom:28px}
+  h2{
+    font-size:18px;font-weight:600;letter-spacing:-.01em;
+    margin:0 0 4px;
+  }
+  .subtitulo{font-size:14px;color:var(--tinta-suave);margin:0 0 16px}
+  .panel{background:var(--papel);border:1px solid var(--linea);padding:24px}
+
+  /* ---------- tabla ---------- */
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{
+    text-align:right;font-weight:600;font-size:13px;color:var(--tinta-suave);
+    padding:8px 10px;border-bottom:1.5px solid var(--tinta);
+  }
+  th:first-child,td:first-child{text-align:left}
+  td{
+    text-align:right;padding:8px 10px;border-bottom:1px solid var(--linea);
+    font-variant-numeric:tabular-nums;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  .marca{
+    display:inline-block;width:9px;height:9px;border-radius:50%;
+    margin-right:7px;vertical-align:baseline;
+  }
+
+  /* ---------- estados ---------- */
+  .aviso{
+    background:var(--papel);border:1px solid var(--linea);
+    padding:40px 32px;text-align:center;
+  }
+  .aviso h2{margin:0 0 8px}
+  .aviso p{margin:0 auto;max-width:52ch;color:var(--tinta-suave);font-size:15px}
+  .aviso code{
+    background:var(--fondo);padding:2px 6px;font-size:13.5px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+
+  .pie{
+    margin-top:40px;padding-top:16px;border-top:1px solid var(--linea);
+    font-size:13px;color:var(--tinta-suave);
+  }
+  .pie p{margin:0 0 6px}
+
+  .oculto{display:none}
+  svg{display:block;max-width:100%;height:auto}
+  .leyenda{
+    display:flex;gap:20px;flex-wrap:wrap;
+    font-size:13px;color:var(--tinta-suave);margin-top:14px;
+  }
+  .leyenda span{display:flex;align-items:center;gap:7px}
+  .llave{width:14px;height:3px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="envoltorio">
+
+  <header class="cabecera">
+    <h1>Balance hídrico — Lote 20</h1>
+    <div class="meta" id="meta">Cargando…</div>
+  </header>
+
+  <div id="cargando" class="aviso">
+    <h2>Cargando datos</h2>
+    <p>Leyendo la serie del balance.</p>
+  </div>
+
+  <div id="sin-datos" class="aviso oculto">
+    <h2>Todavía no hay resultados</h2>
+    <p>El tablero se llena solo cuando el sistema procesa su primer día con datos. Para forzar una corrida ahora, entrá a la pestaña <strong>Actions</strong> del repositorio y usá <strong>Run workflow</strong>.</p>
+  </div>
+
+  <main id="contenido" class="oculto">
+
+    <!-- ====== ESTADO ACTUAL + PERFIL DE SUELO ====== -->
+    <div class="principal">
+      <div>
+        <p class="estado-titulo" id="fecha-dato"></p>
+        <p class="estado-condicion" id="condicion"></p>
+        <p class="estado-pct" id="pct-au"></p>
+
+        <dl class="cifras">
+          <div class="cifra"><dt>Agua útil disponible</dt><dd id="au-real"></dd></div>
+          <div class="cifra"><dt>Capacidad a esa profundidad</dt><dd id="au-max"></dd></div>
+          <div class="cifra"><dt>Falta para capacidad de campo</dt><dd id="deficit"></dd></div>
+          <div class="cifra"><dt>Profundidad de raíz</dt><dd id="raiz"></dd></div>
+          <div class="cifra"><dt>Consumo del día</dt><dd id="etc"></dd></div>
+          <div class="cifra"><dt>Lluvia de los últimos 7 días</dt><dd id="lluvia7"></dd></div>
+        </dl>
+
+        <div class="recomendacion" id="recomendacion"></div>
+      </div>
+
+      <div>
+        <h2>Perfil del suelo</h2>
+        <p class="subtitulo">Franja azul: cuánto de la capacidad está ocupado por agua disponible</p>
+        <div id="perfil"></div>
+      </div>
+    </div>
+
+    <!-- ====== SERIE DE LA CAMPAÑA ====== -->
+    <section>
+      <h2>La campaña hasta hoy</h2>
+      <p class="subtitulo">Agua útil disponible frente a las lluvias registradas</p>
+      <div class="panel">
+        <div id="serie"></div>
+        <div class="leyenda">
+          <span><i class="llave" style="background:var(--agua)"></i>Agua útil (%)</span>
+          <span><i class="llave" style="background:var(--critico)"></i>Umbral de riego</span>
+          <span><i class="llave" style="background:var(--agua-claro);height:9px;width:9px"></i>Lluvia diaria</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== VIGOR ====== -->
+    <section>
+      <h2>Vigor del cultivo</h2>
+      <p class="subtitulo">NDVI de Sentinel-2. Los días sin pasada o con nubes repiten el último valor válido</p>
+      <div class="panel">
+        <div id="ndvi"></div>
+      </div>
+    </section>
+
+    <!-- ====== ÚLTIMOS DÍAS ====== -->
+    <section>
+      <h2>Últimos catorce días</h2>
+      <p class="subtitulo">Detalle diario</p>
+      <div class="panel" style="overflow-x:auto">
+        <table id="tabla"></table>
+      </div>
+    </section>
+
+    <div class="pie">
+      <p id="pie-actualizado"></p>
+      <p>La lámina sugerida es la que falta para llegar a capacidad de campo, corregida por la eficiencia de aplicación. No contempla el pronóstico de lluvia ni la capacidad del equipo: tomala como un dato de apoyo para decidir, no como la decisión.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+// ===================== configuración =====================
+const RUTA_CSV = "balance_hidrico_lote20.csv";
+const UMBRAL_RIEGO = 50;          // % de agua útil que dispara la alerta
+const EFICIENCIA = 0.85;          // eficiencia de aplicación del riego
+const PROF_MAX = 200;             // cm
+
+const ESCALA = [
+  {min:75, nombre:"Óptimo",   color:"var(--optimo)",   hex:"#3F7245"},
+  {min:50, nombre:"Adecuado", color:"var(--adecuado)", hex:"#8A9B3D"},
+  {min:35, nombre:"Déficit",  color:"var(--deficit)",  hex:"#C4762A"},
+  {min:0,  nombre:"Crítico",  color:"var(--critico)",  hex:"#A63D2E"}
+];
+const clasificar = pct => ESCALA.find(e => pct >= e.min) || ESCALA[ESCALA.length-1];
+
+const num = (v, d=1) => Number(v).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fechaLarga = f => f.toLocaleDateString("es-AR",{day:"numeric",month:"long",year:"numeric"});
+const fechaCorta = f => f.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});
+
+// ===================== carga =====================
+function parsearCSV(texto){
+  const lineas = texto.trim().split(/\r?\n/);
+  const cab = lineas[0].split(",").map(s=>s.trim());
+  return lineas.slice(1).filter(l=>l.trim()).map(linea=>{
+    const celdas = linea.split(",");
+    const o = {};
+    cab.forEach((c,i)=>{
+      const v = (celdas[i]||"").trim();
+      o[c] = (c==="fecha") ? new Date(v+"T00:00:00") : parseFloat(v);
+    });
+    return o;
+  }).filter(d => d.fecha instanceof Date && !isNaN(d.fecha));
+}
+
+fetch(RUTA_CSV, {cache:"no-store"})
+  .then(r => { if(!r.ok) throw new Error("sin archivo"); return r.text(); })
+  .then(txt => {
+    const datos = parsearCSV(txt);
+    if(!datos.length) throw new Error("vacío");
+    dibujarTodo(datos);
+  })
+  .catch(() => {
+    document.getElementById("cargando").classList.add("oculto");
+    document.getElementById("sin-datos").classList.remove("oculto");
+    document.getElementById("meta").textContent = "Sin datos aún";
+  });
+
+// ===================== render =====================
+function dibujarTodo(datos){
+  document.getElementById("cargando").classList.add("oculto");
+  document.getElementById("contenido").classList.remove("oculto");
+
+  const ultimo = datos[datos.length-1];
+  const cat = clasificar(ultimo.pct_au);
+  const deficitMM = Math.max(0, ultimo.au_max_mm - ultimo.au_real_mm);
+  const lluvia7 = datos.slice(-7).reduce((a,d)=>a+(d.precipitacion_mm||0),0);
+
+  document.getElementById("meta").textContent =
+    datos.length + " días calculados · desde el " + fechaCorta(datos[0].fecha);
+  document.getElementById("fecha-dato").textContent = "Situación al " + fechaLarga(ultimo.fecha);
+  document.getElementById("condicion").textContent = cat.nombre;
+  document.getElementById("condicion").style.color = cat.color;
+  document.getElementById("pct-au").textContent = num(ultimo.pct_au,0) + " % del agua útil";
+
+  document.getElementById("au-real").textContent = num(ultimo.au_real_mm) + " mm";
+  document.getElementById("au-max").textContent  = num(ultimo.au_max_mm) + " mm";
+  document.getElementById("deficit").textContent = num(deficitMM) + " mm";
+  document.getElementById("raiz").textContent    = num(ultimo.prof_raiz_cm,0) + " cm";
+  document.getElementById("etc").textContent     = num(ultimo.etc_ajustada_mm) + " mm";
+  document.getElementById("lluvia7").textContent = num(lluvia7) + " mm";
+
+  // --- recomendación ---
+  const caja = document.getElementById("recomendacion");
+  if(ultimo.pct_au < UMBRAL_RIEGO){
+    const neta = deficitMM, bruta = deficitMM / EFICIENCIA;
+    caja.className = "recomendacion";
+    caja.innerHTML =
+      "<h3>Conviene regar</h3>" +
+      "<div class='lamina'>" + num(bruta) + " mm</div>" +
+      "<p>Lámina bruta con " + Math.round(EFICIENCIA*100) + " % de eficiencia. " +
+      "Neta: " + num(neta) + " mm. Revisá el pronóstico antes de aplicar.</p>";
+  } else {
+    caja.className = "recomendacion ok";
+    caja.innerHTML =
+      "<h3>Sin necesidad de riego</h3>" +
+      "<p>El agua útil está por encima del umbral de " + UMBRAL_RIEGO + " %. " +
+      "Faltan " + num(deficitMM) + " mm para capacidad de campo.</p>";
+  }
+
+  dibujarPerfil(ultimo, cat);
+  dibujarSerie(datos);
+  dibujarNDVI(datos);
+  dibujarTabla(datos);
+
+  document.getElementById("pie-actualizado").textContent =
+    "Último día procesado: " + fechaLarga(ultimo.fecha) +
+    ". NDVI de Sentinel-2 (Copernicus); lluvia y evapotranspiración de AgERA5.";
+}
+
+// ---------- perfil de suelo ----------
+function dibujarPerfil(d, cat){
+  const W = 420, H = 340, mIzq = 46, mDer = 130, mSup = 16, mInf = 20;
+  const x0 = mIzq, ancho = W - mIzq - mDer;
+  const alto = H - mSup - mInf;
+  const yDe = cm => mSup + (cm / PROF_MAX) * alto;
+
+  const horizontes = [
+    {hasta:20,  c:"var(--h1)"}, {hasta:40,  c:"var(--h2)"},
+    {hasta:60,  c:"var(--h3)"}, {hasta:100, c:"var(--h4)"},
+    {hasta:200, c:"var(--h5)"}
+  ];
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Corte del perfil de suelo mostrando el agua almacenada">`;
+
+  // horizontes
+  let desde = 0;
+  horizontes.forEach(h=>{
+    s += `<rect x="${x0}" y="${yDe(desde)}" width="${ancho}" height="${yDe(h.hasta)-yDe(desde)}" fill="${h.c}"/>`;
+    desde = h.hasta;
+  });
+
+  // Zona explorada por las raíces. El agua se representa como proporción de la
+  // capacidad (llenado horizontal), NO como una lámina apilada en el fondo:
+  // el agua útil está distribuida en todo el perfil explorado, no formando napa.
+  const yRaiz = yDe(d.prof_raiz_cm);
+  const altoRaiz = yRaiz - mSup;
+  const anchoAgua = ancho * (d.pct_au/100);
+
+  // el suelo seco de la zona de raíces se oscurece levemente
+  s += `<rect x="${x0}" y="${mSup}" width="${ancho}" height="${altoRaiz}" fill="#000" opacity=".10"/>`;
+  s += `<rect x="${x0}" y="${mSup}" width="${anchoAgua}" height="${altoRaiz}" fill="var(--agua)" opacity=".80"/>`;
+  s += `<line x1="${x0+anchoAgua}" y1="${mSup}" x2="${x0+anchoAgua}" y2="${yRaiz}" stroke="var(--agua-claro)" stroke-width="2.5"/>`;
+
+  // línea de profundidad de raíz
+  s += `<line x1="${x0-6}" y1="${yRaiz}" x2="${x0+ancho+8}" y2="${yRaiz}" stroke="var(--tinta)" stroke-width="1.5" stroke-dasharray="5 3"/>`;
+  s += `<text x="${x0+ancho+14}" y="${yRaiz+4}" font-size="12" fill="var(--tinta)" font-weight="600">raíz ${Math.round(d.prof_raiz_cm)} cm</text>`;
+
+  // etiqueta del agua, dentro de la franja azul si entra
+  const yEtiq = mSup + altoRaiz/2;
+  if(anchoAgua > 118 && altoRaiz > 46){
+    s += `<text x="${x0+14}" y="${yEtiq-2}" font-size="19" font-weight="800" fill="#fff">${num(d.au_real_mm)} mm</text>`;
+    s += `<text x="${x0+14}" y="${yEtiq+16}" font-size="12" fill="#fff" opacity=".85">de ${num(d.au_max_mm)} mm · ${num(d.pct_au,0)} %</text>`;
+  } else {
+    s += `<text x="${x0+anchoAgua+10}" y="${yEtiq-2}" font-size="15" font-weight="800" fill="var(--agua)">${num(d.au_real_mm)} mm</text>`;
+    s += `<text x="${x0+anchoAgua+10}" y="${yEtiq+15}" font-size="11.5" fill="var(--tinta)">de ${num(d.au_max_mm)} mm · ${num(d.pct_au,0)} %</text>`;
+  }
+
+  // borde y escala de profundidad
+  s += `<rect x="${x0}" y="${mSup}" width="${ancho}" height="${alto}" fill="none" stroke="var(--tinta)" stroke-width="1.5"/>`;
+  [0,50,100,150,200].forEach(p=>{
+    s += `<line x1="${x0-5}" y1="${yDe(p)}" x2="${x0}" y2="${yDe(p)}" stroke="var(--tinta-suave)" stroke-width="1"/>`;
+    s += `<text x="${x0-9}" y="${yDe(p)+4}" font-size="11" fill="var(--tinta-suave)" text-anchor="end">${p}</text>`;
+  });
+  s += `<text x="${x0-9}" y="${mSup-4}" font-size="11" fill="var(--tinta-suave)" text-anchor="end">cm</text>`;
+  s += `</svg>`;
+  document.getElementById("perfil").innerHTML = s;
+}
+
+// ---------- serie de la campaña ----------
+function dibujarSerie(datos){
+  const W = 1020, H = 300, mIzq = 44, mDer = 66, mSup = 14, mInf = 30;
+  const ancho = W - mIzq - mDer, alto = H - mSup - mInf;
+  const altoLluvia = 74;                       // franja superior para las barras
+  const yBase = mSup + altoLluvia;             // línea de la que cuelgan las barras
+  const altoAgua = alto - altoLluvia;
+
+  const n = datos.length;
+  const px = i => mIzq + (n<=1 ? ancho/2 : (i/(n-1))*ancho);
+  const pyAgua = pct => yBase + altoAgua - (pct/100)*altoAgua;
+  const maxLluvia = Math.max(10, ...datos.map(d=>d.precipitacion_mm||0));
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución del agua útil y las lluvias durante la campaña">`;
+
+  // grilla horizontal del % de agua útil
+  [0,25,50,75,100].forEach(v=>{
+    s += `<line x1="${mIzq}" y1="${pyAgua(v)}" x2="${mIzq+ancho}" y2="${pyAgua(v)}" stroke="var(--linea)" stroke-width="1"/>`;
+    s += `<text x="${mIzq-8}" y="${pyAgua(v)+4}" font-size="11" fill="var(--tinta-suave)" text-anchor="end">${v}%</text>`;
+  });
+
+  // banda de riesgo por debajo del umbral (la línea se dibuja después del área)
+  s += `<rect x="${mIzq}" y="${pyAgua(UMBRAL_RIEGO)}" width="${ancho}" height="${pyAgua(0)-pyAgua(UMBRAL_RIEGO)}" fill="var(--critico)" opacity=".10"/>`;
+
+  // barras de lluvia colgando desde arriba
+  const anchoBarra = Math.max(1.2, Math.min(7, ancho/n*0.75));
+  datos.forEach((d,i)=>{
+    const mm = d.precipitacion_mm||0;
+    if(mm<=0) return;
+    const h = (mm/maxLluvia)*altoLluvia;
+    s += `<rect x="${px(i)-anchoBarra/2}" y="${yBase-h}" width="${anchoBarra}" height="${h}" fill="var(--agua-claro)" opacity=".8"/>`;
+  });
+  s += `<line x1="${mIzq}" y1="${yBase}" x2="${mIzq+ancho}" y2="${yBase}" stroke="var(--tinta-suave)" stroke-width="1"/>`;
+  s += `<text x="${mIzq+ancho+7}" y="${mSup+11}" font-size="11" fill="var(--tinta-suave)">${num(maxLluvia,0)} mm</text>`;
+  s += `<text x="${mIzq+ancho+7}" y="${yBase+3}" font-size="11" fill="var(--tinta-suave)">0</text>`;
+
+  // área y línea de agua útil
+  let d1 = `M ${px(0)} ${pyAgua(datos[0].pct_au)}`;
+  datos.forEach((d,i)=>{ if(i) d1 += ` L ${px(i)} ${pyAgua(d.pct_au)}`; });
+  s += `<path d="${d1} L ${px(n-1)} ${pyAgua(0)} L ${px(0)} ${pyAgua(0)} Z" fill="var(--agua)" opacity=".13"/>`;
+  s += `<path d="${d1}" fill="none" stroke="var(--agua)" stroke-width="2.2" stroke-linejoin="round"/>`;
+
+  // línea del umbral, por encima del área para que no quede tapada
+  s += `<line x1="${mIzq}" y1="${pyAgua(UMBRAL_RIEGO)}" x2="${mIzq+ancho}" y2="${pyAgua(UMBRAL_RIEGO)}" stroke="var(--critico)" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+  s += `<text x="${mIzq+ancho+7}" y="${pyAgua(UMBRAL_RIEGO)+4}" font-size="11" fill="var(--critico)" font-weight="600">${UMBRAL_RIEGO}%</text>`;
+
+  // punto final destacado
+  const uc = clasificar(datos[n-1].pct_au);
+  s += `<circle cx="${px(n-1)}" cy="${pyAgua(datos[n-1].pct_au)}" r="4.5" fill="${uc.hex}" stroke="var(--papel)" stroke-width="2"/>`;
+
+  // eje de fechas
+  const pasos = Math.min(7, n);
+  for(let k=0;k<pasos;k++){
+    const i = Math.round(k*(n-1)/Math.max(1,pasos-1));
+    s += `<text x="${px(i)}" y="${H-9}" font-size="11" fill="var(--tinta-suave)" text-anchor="middle">${fechaCorta(datos[i].fecha)}</text>`;
+  }
+  s += `</svg>`;
+  document.getElementById("serie").innerHTML = s;
+}
+
+// ---------- NDVI ----------
+function dibujarNDVI(datos){
+  const W = 1020, H = 190, mIzq = 44, mDer = 66, mSup = 14, mInf = 30;
+  const ancho = W - mIzq - mDer, alto = H - mSup - mInf;
+  const n = datos.length;
+  const px = i => mIzq + (n<=1 ? ancho/2 : (i/(n-1))*ancho);
+  const py = v => mSup + alto - (v/1.0)*alto;
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución del NDVI durante la campaña">`;
+  [0,0.25,0.5,0.75,1].forEach(v=>{
+    s += `<line x1="${mIzq}" y1="${py(v)}" x2="${mIzq+ancho}" y2="${py(v)}" stroke="var(--linea)" stroke-width="1"/>`;
+    s += `<text x="${mIzq-8}" y="${py(v)+4}" font-size="11" fill="var(--tinta-suave)" text-anchor="end">${v.toFixed(2)}</text>`;
+  });
+
+  let d1 = `M ${px(0)} ${py(datos[0].ndvi)}`;
+  datos.forEach((d,i)=>{ if(i) d1 += ` L ${px(i)} ${py(d.ndvi)}`; });
+  s += `<path d="${d1} L ${px(n-1)} ${py(0)} L ${px(0)} ${py(0)} Z" fill="var(--adecuado)" opacity=".16"/>`;
+  s += `<path d="${d1}" fill="none" stroke="var(--adecuado)" stroke-width="2.2" stroke-linejoin="round"/>`;
+  s += `<circle cx="${px(n-1)}" cy="${py(datos[n-1].ndvi)}" r="4.5" fill="var(--adecuado)" stroke="var(--papel)" stroke-width="2"/>`;
+  s += `<text x="${px(n-1)}" y="${py(datos[n-1].ndvi)-12}" font-size="12" font-weight="700" fill="var(--adecuado)" text-anchor="end">NDVI ${datos[n-1].ndvi.toFixed(2)}</text>`;
+
+  const pasos = Math.min(7, n);
+  for(let k=0;k<pasos;k++){
+    const i = Math.round(k*(n-1)/Math.max(1,pasos-1));
+    s += `<text x="${px(i)}" y="${H-9}" font-size="11" fill="var(--tinta-suave)" text-anchor="middle">${fechaCorta(datos[i].fecha)}</text>`;
+  }
+  s += `</svg>`;
+  document.getElementById("ndvi").innerHTML = s;
+}
+
+// ---------- tabla ----------
+function dibujarTabla(datos){
+  const ult = datos.slice(-14).reverse();
+  let h = "<thead><tr><th>Fecha</th><th>Agua útil</th><th>%</th><th>Lluvia</th><th>Consumo</th><th>NDVI</th><th>Raíz</th></tr></thead><tbody>";
+  ult.forEach(d=>{
+    const c = clasificar(d.pct_au);
+    h += "<tr>" +
+      "<td><span class='marca' style='background:"+c.hex+"'></span>" + fechaCorta(d.fecha) + "</td>" +
+      "<td>" + num(d.au_real_mm) + " mm</td>" +
+      "<td>" + num(d.pct_au,0) + " %</td>" +
+      "<td>" + (d.precipitacion_mm > 0 ? num(d.precipitacion_mm) + " mm" : "—") + "</td>" +
+      "<td>" + num(d.etc_ajustada_mm) + " mm</td>" +
+      "<td>" + d.ndvi.toFixed(2) + "</td>" +
+      "<td>" + num(d.prof_raiz_cm,0) + " cm</td>" +
+    "</tr>";
+  });
+  document.getElementById("tabla").innerHTML = h + "</tbody>";
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+# =============================================================================
+# Configuración del Balance Hídrico Periódico - Lote 20
+# =============================================================================
+
+aoi:
+  shapefile: "aoi/lote_20.shp"
+
+campana:
+  fecha_siembra: "2025-05-23"      # usada solo la primera vez (estado inicial)
+  au_real_inicial_mm: 40.0
+  prof_raiz_inicial_cm: 10
+
+balance:
+  umbral_riego_pct: 50
+  incremento_raiz_diario_cm: 2.0
+  prof_raiz_max_cm: 200
+  kc_a: 1.77
+  kc_b: -0.198
+
+# Cuántos días de "colchón" se dejan antes de hoy al pedir datos nuevos.
+# Sentinel-2 en CDSE está casi en tiempo real (1-2 días); AgERA5 (CDS) suele
+# tener un rezago de ~7-10 días hasta la versión "final". Se usa el mayor de
+# los dos rezagos para no pedir un rango que todavía no tiene datos.
+rezago_dias:
+  ndvi: 2
+  clima: 10
+
+rutas:
+  estado_json: "data/estado.json"
+  salida_csv: "data/balance_hidrico_lote20.csv"
+  log_file: "logs/balance_hidrico.log"
+
+# ---------------------------------------------------------------------------
+# Copernicus Data Space Ecosystem (NDVI vía Sentinel Hub Statistical API)
+# ---------------------------------------------------------------------------
+# Credenciales: NO se escriben acá. Se leen de variables de entorno:
+#   CDSE_CLIENT_ID
+#   CDSE_CLIENT_SECRET
+# Crearlas en: https://shapps.dataspace.copernicus.eu/dashboard/
+cdse:
+  max_cloud_coverage: 60
+  resolucion_m: 10
+
+# ---------------------------------------------------------------------------
+# Copernicus Climate Data Store (precipitación + ETo vía AgERA5)
+# ---------------------------------------------------------------------------
+# Credenciales: en ~/.cdsapirc (ver README.md).
+# `request_template` se copia tal cual del botón "Show API request" en:
+#   https://cds.climate.copernicus.eu/datasets/sis-agrometeorological-indicators
+# (Se completan year/month/day/area automáticamente desde el script; no hace
+# falta ponerlos acá.)
+cds:
+  request_template:
+    version: "1_1"
+    variable:
+      - "precipitation_flux"
+      - "reference_evapotranspiration"
+    statistic: []
+    format: "zip"
+
+# ---------------------------------------------------------------------------
+# Notificaciones por Telegram
+# ---------------------------------------------------------------------------
+# Credenciales por variable de entorno (o Secrets de GitHub):
+#   TELEGRAM_BOT_TOKEN   -> token que da @BotFather
+#   TELEGRAM_CHAT_ID     -> id del chat/grupo donde mandar el aviso
+telegram:
+  habilitado: true
+  nombre_lote: "Lote 20"
+
+  # Cuándo mandar mensaje:
+  #   cruce   -> solo cuando el %AU cruza el umbral hacia abajo (recomendado:
+  #              evita el mensaje repetido todos los días mientras sigue seco)
+  #   deficit -> cada corrida en la que el %AU esté por debajo del umbral
+  #   siempre -> cada corrida que procese días nuevos (útil para probar)
+  modo: "cruce"
+
+  # Parámetros de la lámina de riego sugerida
+  eficiencia_aplicacion: 0.85     # 0.85 = pivote en buenas condiciones. AJUSTAR
+                                  # según el sistema real (surcos/aspersión con
+                                  # viento suelen estar bastante por debajo).
+  reposicion_objetivo_pct: 100    # 100 = reponer hasta capacidad de campo.
+                                  # Bajar (ej. 80) para riego deficitario
+                                  # controlado.
