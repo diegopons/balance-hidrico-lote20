@@ -35,10 +35,56 @@ from src.aoi import cargar_aoi
 from src.balance import procesar_dias_nuevos
 from src.clima_agera5 import descargar_agera5
 from src.config import cargar_config
-from src.estado import append_resultados_csv, cargar_estado, guardar_estado
+from src.estado import (
+    append_resultados_csv,
+    cargar_estado,
+    guardar_estado,
+    huella_corrida,
+)
 from src.ndvi_sentinelhub import obtener_serie_ndvi
 from src.notificaciones import armar_mensaje, debe_notificar, enviar_telegram
 from src.suelo import SUELO_PROPIEDADES_DEFAULT, precalcular_parametros_suelo
+
+
+def _env_bool(nombre: str) -> bool:
+    return os.environ.get(nombre, "").strip().lower() in ("1", "true", "yes", "si", "sí")
+
+
+def aplicar_parametros_de_entorno(cfg: dict, log) -> dict:
+    """Permite sobrescribir parámetros de inicio sin editar config.yaml.
+
+    El formulario de "Run workflow" en GitHub Actions pasa estos valores como
+    variables de entorno. Si vienen vacíos (una corrida programada, por
+    ejemplo), se usa lo que diga config.yaml.
+    """
+    overrides = [
+        ("BH_FECHA_SIEMBRA", ("campana", "fecha_siembra"), str),
+        ("BH_AU_INICIAL_MM", ("campana", "au_real_inicial_mm"), float),
+        ("BH_PROF_RAIZ_INICIAL_CM", ("campana", "prof_raiz_inicial_cm"), float),
+        ("BH_UMBRAL_RIEGO_PCT", ("balance", "umbral_riego_pct"), float),
+        ("BH_PROF_RAIZ_MAX_CM", ("balance", "prof_raiz_max_cm"), float),
+        ("BH_MODO_AVISO", ("telegram", "modo"), str),
+        ("BH_NOMBRE_LOTE", ("telegram", "nombre_lote"), str),
+        ("BH_EFICIENCIA_RIEGO", ("telegram", "eficiencia_aplicacion"), float),
+    ]
+
+    aplicados = []
+    for var, (seccion, clave), tipo in overrides:
+        crudo = os.environ.get(var, "").strip()
+        if not crudo:
+            continue
+        try:
+            valor = tipo(crudo)
+        except ValueError:
+            log.warning("Valor inválido en %s ('%s'): se ignora.", var, crudo)
+            continue
+        cfg.setdefault(seccion, {})[clave] = valor
+        aplicados.append(f"{seccion}.{clave}={valor}")
+
+    if aplicados:
+        log.info("Parámetros recibidos del formulario: %s", ", ".join(aplicados))
+
+    return cfg
 
 
 def configurar_logging(log_file: str) -> None:
@@ -57,6 +103,10 @@ def main(config_path: str = "config.yaml") -> int:
 
     log.info("========== Nueva corrida de Balance Hídrico ==========")
 
+    # Parámetros que pueden llegar del formulario de "Run workflow"
+    cfg = aplicar_parametros_de_entorno(cfg, log)
+    reiniciar_estado = _env_bool("BH_REINICIAR_ESTADO")
+
     # 1. Credenciales (nunca en config.yaml)
     cdse_client_id = os.environ.get("CDSE_CLIENT_ID")
     cdse_client_secret = os.environ.get("CDSE_CLIENT_SECRET")
@@ -72,10 +122,15 @@ def main(config_path: str = "config.yaml") -> int:
     log.info("Lote cargado: %.2f ha. BBox=%s", aoi_info["area_ha"], aoi_info["bbox"])
 
     # 3. Estado y suelo
+    # La huella ata el estado guardado al lote y a la fecha de siembra: si
+    # cualquiera de los dos cambió, el balance acumulado no sirve y se reinicia.
+    huella = huella_corrida(aoi_info["geojson"], cfg["campana"]["fecha_siembra"])
     estado = cargar_estado(
         cfg["rutas"]["estado_json"],
         au_real_inicial=cfg["campana"]["au_real_inicial_mm"],
         prof_raiz_inicial=cfg["campana"]["prof_raiz_inicial_cm"],
+        huella=huella,
+        reiniciar=reiniciar_estado,
     )
     df_suelo = precalcular_parametros_suelo(cfg.get("suelo", SUELO_PROPIEDADES_DEFAULT))
 
@@ -148,7 +203,7 @@ def main(config_path: str = "config.yaml") -> int:
 
     # 9. Guardar CSV histórico y estado
     append_resultados_csv(cfg["rutas"]["salida_csv"], df_resultados)
-    guardar_estado(cfg["rutas"]["estado_json"], estado_nuevo)
+    guardar_estado(cfg["rutas"]["estado_json"], estado_nuevo, huella=huella)
 
     # 10. Notificación de estado / alerta de riego
     if not df_resultados.empty:
