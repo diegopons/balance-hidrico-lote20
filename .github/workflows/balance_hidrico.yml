@@ -12,8 +12,45 @@ on:
     - cron: "0 9 * * *"
 
   # 2) Manual, con un botón en la pestaña "Actions" del repo.
-  #    Muy útil para probar sin esperar al horario.
+  #    Los campos de abajo aparecen como un formulario al hacer clic en
+  #    "Run workflow". Dejarlos vacíos = usar lo que diga config.yaml.
   workflow_dispatch:
+    inputs:
+      fecha_siembra:
+        description: "Fecha de siembra (AAAA-MM-DD). Vacío = la del config"
+        required: false
+        type: string
+      au_inicial_mm:
+        description: "Agua útil inicial, en mm"
+        required: false
+        type: string
+      prof_raiz_inicial_cm:
+        description: "Profundidad de raíz inicial, en cm"
+        required: false
+        type: string
+      umbral_riego_pct:
+        description: "Umbral de riego, en % de agua útil"
+        required: false
+        type: string
+      nombre_lote:
+        description: "Nombre del lote para el aviso de Telegram"
+        required: false
+        type: string
+      modo_aviso:
+        description: "Cuándo avisar por Telegram"
+        required: false
+        type: choice
+        default: "(usar config)"
+        options:
+          - "(usar config)"
+          - "cruce"
+          - "deficit"
+          - "siempre"
+      reiniciar_estado:
+        description: "Reiniciar el balance desde cero (descarta lo acumulado)"
+        required: false
+        type: boolean
+        default: false
 
 # Permiso necesario para que el workflow pueda escribir en el repo
 # (guardar el CSV y el estado actualizados).
@@ -61,6 +98,15 @@ jobs:
           CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # Parámetros del formulario. En una corrida programada llegan
+          # vacíos y el script usa config.yaml.
+          BH_FECHA_SIEMBRA: ${{ inputs.fecha_siembra }}
+          BH_AU_INICIAL_MM: ${{ inputs.au_inicial_mm }}
+          BH_PROF_RAIZ_INICIAL_CM: ${{ inputs.prof_raiz_inicial_cm }}
+          BH_UMBRAL_RIEGO_PCT: ${{ inputs.umbral_riego_pct }}
+          BH_NOMBRE_LOTE: ${{ inputs.nombre_lote }}
+          BH_MODO_AVISO: ${{ inputs.modo_aviso == '(usar config)' && '' || inputs.modo_aviso }}
+          BH_REINICIAR_ESTADO: ${{ inputs.reiniciar_estado }}
         run: python -m src.main
 
       # ---------------------------------------------------------------
