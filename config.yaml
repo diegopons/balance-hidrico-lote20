@@ -73,7 +73,7 @@ telegram:
   #              evita el mensaje repetido todos los días mientras sigue seco)
   #   deficit -> cada corrida en la que el %AU esté por debajo del umbral
   #   siempre -> cada corrida que procese días nuevos (útil para probar)
-  modo: "cruce"
+  modo: "siempre"
 
   # Parámetros de la lámina de riego sugerida
   eficiencia_aplicacion: 0.85     # 0.85 = pivote en buenas condiciones. AJUSTAR
