@@ -1,31 +1,20 @@
 """
 clima_agera5.py
 ----------------
-Reemplaza ERA5-Land (GEE) por el dataset AgERA5 del Copernicus Climate Data
-Store (CDS): "sis-agrometeorological-indicators". Este dataset ya trae, listas
-para usar, precipitación diaria y evapotranspiración de referencia (FAO
-Penman-Monteith) a 0.1° (~10 km) de resolución, así que no hace falta
-calcular ETo a mano como con ERA5-Land crudo.
+Descarga precipitación y evapotranspiración de referencia (ETo) del dataset
+AgERA5 del Copernicus Climate Data Store.
 
-Requiere:
-  - Cuenta en https://cds.climate.copernicus.eu/
-  - Aceptar los términos del dataset "sis-agrometeorological-indicators"
-    (se hacen una vez, desde la web del dataset).
-  - Un archivo ~/.cdsapirc (en Windows: C:\\Users\\<usuario>\\.cdsapirc) con:
-        url: https://cds.climate.copernicus.eu/api
-        key: <tu API key personal>
+IMPORTANTE: el dataset acepta UNA variable por pedido. Por eso este módulo
+hace una descarga por variable y después las junta. (Pedir las dos juntas
+devuelve en silencio un solo archivo, y el balance se queda sin ETo.)
 
-El cuerpo exacto de la request a la API (nombres de variables, versión del
-dataset, etc.) puede cambiar con el tiempo del lado de Copernicus. Por eso
-NO está hardcodeado en el código: se arma en config.yaml (clave
-"cds.request_template") copiando el fragmento que la propia web del dataset
-genera en su botón "Show API request" — así, si Copernicus cambia algo, se
-actualiza el config sin tocar este script.
+Credenciales: variables de entorno CDSAPI_URL / CDSAPI_KEY, o ~/.cdsapirc
 """
 from __future__ import annotations
 
 import glob
 import logging
+import os
 import shutil
 import tempfile
 import zipfile
@@ -38,6 +27,12 @@ logger = logging.getLogger(__name__)
 
 DATASET = "sis-agrometeorological-indicators"
 
+# Palabras clave para reconocer qué trae cada archivo descargado
+CLAVES = [
+    ("precipitacion_mm", ("precipitation", "precip")),
+    ("eto_mm", ("evapotranspiration", "evapo", "eto", "et0")),
+]
+
 
 def _fechas_a_ymd(fechas: Iterable[pd.Timestamp]):
     fechas = pd.DatetimeIndex(fechas)
@@ -47,6 +42,83 @@ def _fechas_a_ymd(fechas: Iterable[pd.Timestamp]):
     return years, months, days
 
 
+def _cliente_cds():
+    import cdsapi
+
+    url = os.environ.get("CDSAPI_URL")
+    key = os.environ.get("CDSAPI_KEY")
+    if url and key:
+        logger.info("Usando credenciales de CDS desde variables de entorno.")
+        return cdsapi.Client(url=url, key=key)
+    logger.info("Usando credenciales de CDS desde ~/.cdsapirc")
+    return cdsapi.Client()
+
+
+def _clasificar(texto: str) -> str | None:
+    texto = texto.lower()
+    for clave, palabras in CLAVES:
+        if any(p in texto for p in palabras):
+            return clave
+    return None
+
+
+def _descargar_una_variable(client, variable, request_base, years, months, days, area):
+    """Pide UNA variable y devuelve (clave, serie) o (None, None) si no vino."""
+    import xarray as xr
+
+    request = dict(request_base)
+    request.pop("variable", None)
+    request["variable"] = [variable] if isinstance(variable, str) else list(variable)
+    request["year"] = years
+    request["month"] = months
+    request["day"] = days
+    request["area"] = area
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        destino = Path(tmpdir) / "descarga.zip"
+        logger.info("Pidiendo a AgERA5 la variable '%s'...", variable)
+        client.retrieve(DATASET, request, str(destino))
+
+        extraido = Path(tmpdir) / "extraido"
+        extraido.mkdir()
+        if zipfile.is_zipfile(destino):
+            with zipfile.ZipFile(destino) as zf:
+                zf.extractall(extraido)
+        else:
+            shutil.copy(destino, extraido / "datos.nc")
+
+        nc_files = sorted(glob.glob(str(extraido / "*.nc")))
+        logger.info(
+            "  archivos recibidos para '%s': %s",
+            variable,
+            [Path(p).name for p in nc_files],
+        )
+        if not nc_files:
+            logger.warning("  no se recibió NetCDF para '%s'", variable)
+            return None, None
+
+        series_var = []
+        clave = None
+        for nc_path in nc_files:
+            ds = xr.open_dataset(nc_path)
+            var_name = list(ds.data_vars)[0]
+            logger.info("  %s -> %s", Path(nc_path).name, list(ds.data_vars))
+
+            clave = _clasificar(var_name) or _clasificar(Path(nc_path).name) or _clasificar(str(variable))
+            lat_dim = "lat" if "lat" in ds.dims else "latitude"
+            lon_dim = "lon" if "lon" in ds.dims else "longitude"
+            serie = ds[var_name].mean(dim=[lat_dim, lon_dim]).to_series()
+            serie.index = pd.to_datetime(serie.index).normalize()
+            series_var.append(serie)
+            ds.close()
+
+        if clave is None:
+            logger.warning("  no se pudo clasificar la variable '%s'", variable)
+            return None, None
+
+        return clave, pd.concat(series_var).sort_index()
+
+
 def descargar_agera5(
     fecha_inicio: str,
     fecha_fin: str,
@@ -54,91 +126,32 @@ def descargar_agera5(
     request_template: dict,
     cdsapi_rc_path: str | None = None,
 ) -> pd.DataFrame:
-    """Descarga precipitación y ETo (AgERA5) para el rango de fechas y bbox
-    dados, y devuelve un DataFrame diario (fecha, precipitacion_mm, eto_mm)
-    promediado espacialmente sobre el bbox del lote.
-
-    Parameters
-    ----------
-    bbox_wsen: (west, south, east, north) -- igual a aoi["bbox"]
-    request_template: dict base copiado del "Show API request" de la web del
-        dataset (variables, version, etc.); este código completa/sobrescribe
-        year/month/day/area/format automáticamente.
-    """
-    import cdsapi
-    import xarray as xr
-
+    """Devuelve un DataFrame diario (fecha, precipitacion_mm, eto_mm)."""
     west, south, east, north = bbox_wsen
-    # AgERA5 es de resolución ~0.1°; se agrega un margen chico para asegurar
-    # que el bbox del lote caiga dentro de al menos una celda con datos.
     margen = 0.15
-    area = [north + margen, west - margen, south - margen, east + margen]  # [N, W, S, E]
+    area = [north + margen, west - margen, south - margen, east + margen]
 
     fechas = pd.date_range(fecha_inicio, fecha_fin, freq="D")
     years, months, days = _fechas_a_ymd(fechas)
 
-    request = dict(request_template)  # no mutar el original
-    request["year"] = years
-    request["month"] = months
-    request["day"] = days
-    request["area"] = area
+    variables = request_template.get("variable", [])
+    if isinstance(variables, str):
+        variables = [variables]
+    if not variables:
+        raise ValueError("config.yaml: cds.request_template no define 'variable'.")
 
-    # Credenciales del CDS: se toman, en este orden de prioridad,
-    #   1. variables de entorno CDSAPI_URL / CDSAPI_KEY  (usado en GitHub Actions)
-    #   2. archivo ~/.cdsapirc                            (usado en la PC local)
-    import os
+    client = _cliente_cds()
 
-    cds_url = os.environ.get("CDSAPI_URL")
-    cds_key = os.environ.get("CDSAPI_KEY")
-    if cds_url and cds_key:
-        logger.info("Usando credenciales de CDS desde variables de entorno.")
-        client = cdsapi.Client(url=cds_url, key=cds_key)
-    else:
-        logger.info("Usando credenciales de CDS desde ~/.cdsapirc")
-        client = cdsapi.Client()
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        target_zip = Path(tmpdir) / "agera5.zip"
-        logger.info("Solicitando AgERA5 a CDS: %s a %s, bbox=%s", fecha_inicio, fecha_fin, area)
-        client.retrieve(DATASET, request, str(target_zip))
-
-        extract_dir = Path(tmpdir) / "extraido"
-        extract_dir.mkdir()
-        if zipfile.is_zipfile(target_zip):
-            with zipfile.ZipFile(target_zip) as zf:
-                zf.extractall(extract_dir)
-        else:
-            # Algunos requests devuelven un único NetCDF sin zip
-            shutil.copy(target_zip, extract_dir / "agera5.nc")
-
-        nc_files = sorted(glob.glob(str(extract_dir / "*.nc")))
-        if not nc_files:
-            raise RuntimeError("La descarga de AgERA5 no contiene archivos NetCDF esperados.")
-
-        logger.info("Archivos NetCDF recibidos: %s", [Path(p).name for p in nc_files])
-
-        series = {}
-        for nc_path in nc_files:
-            ds = xr.open_dataset(nc_path)
-            var_name = list(ds.data_vars)[0]
-            logger.info(
-                "  %s -> variables: %s", Path(nc_path).name, list(ds.data_vars)
-            )
-            # Promedio espacial sobre el bbox (resolución ~10km, lote << celda)
-            lat_dim = "lat" if "lat" in ds.dims else "latitude"
-            lon_dim = "lon" if "lon" in ds.dims else "longitude"
-            serie = ds[var_name].mean(dim=[lat_dim, lon_dim]).to_series()
-            serie.index = pd.to_datetime(serie.index).normalize()
-            texto = (var_name + " " + Path(nc_path).name).lower()
-            if "precipitation" in texto or "precip" in texto:
-                clave = "precipitacion_mm"
-            elif "evapo" in texto or "eto" in texto or "et0" in texto:
-                clave = "eto_mm"
-            else:
-                logger.warning("Variable no reconocida, se ignora: %s", var_name)
-                continue
+    series = {}
+    for variable in variables:
+        clave, serie = _descargar_una_variable(
+            client, variable, request_template, years, months, days, area
+        )
+        if clave and serie is not None:
             series[clave] = serie
-            ds.close()
+
+    if not series:
+        raise RuntimeError("AgERA5 no devolvió ninguna variable utilizable.")
 
     df = pd.DataFrame(series)
     df.index.name = "fecha"
@@ -146,7 +159,18 @@ def descargar_agera5(
 
     for col in ("precipitacion_mm", "eto_mm"):
         if col not in df.columns:
-            logger.warning("No se encontró variable '%s' en la respuesta de AgERA5.", col)
+            logger.warning(
+                "⚠️  Falta '%s' en la respuesta de AgERA5. El balance quedará "
+                "incompleto: revisá los nombres de variable en config.yaml.",
+                col,
+            )
             df[col] = pd.NA
+
+    logger.info(
+        "AgERA5: %d días, precipitación %s, ETo %s",
+        len(df),
+        "OK" if df["precipitacion_mm"].notna().any() else "FALTA",
+        "OK" if df["eto_mm"].notna().any() else "FALTA",
+    )
 
     return df[["fecha", "precipitacion_mm", "eto_mm"]]
