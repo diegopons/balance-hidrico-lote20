@@ -3,7 +3,9 @@
 # =============================================================================
 
 aoi:
-  shapefile: "aoi/lote_20.shp"
+  # Puede ser un .geojson (recomendado: se edita desde el navegador y lo
+  # genera la página docs/lote.html) o un .shp con sus archivos asociados.
+  archivo: "aoi/lote.geojson"
 
 campana:
   fecha_siembra: "2026-05-23"      # usada solo la primera vez (estado inicial)

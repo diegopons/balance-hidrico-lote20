@@ -57,7 +57,25 @@ def _cargar_con_pyshp(shp_path: Path):
     return unary_union(geoms)
 
 
-def cargar_aoi(shp_path: str | Path) -> dict:
+def _cargar_geojson(path: Path):
+    """Lee un .geojson / .json con el polígono del lote (EPSG:4326)."""
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    tipo = data.get("type")
+    if tipo == "FeatureCollection":
+        geoms = [shape(f["geometry"]) for f in data["features"] if f.get("geometry")]
+    elif tipo == "Feature":
+        geoms = [shape(data["geometry"])]
+    else:
+        geoms = [shape(data)]
+
+    if not geoms:
+        raise ValueError("El GeoJSON no contiene geometrías.")
+    return unary_union(geoms)
+
+
+def cargar_aoi(ruta: str | Path) -> dict:
     """Devuelve un dict con la geometría del lote en distintos formatos.
 
     Returns
@@ -69,10 +87,17 @@ def cargar_aoi(shp_path: str | Path) -> dict:
         "area_ha": float
     }
     """
-    shp_path = Path(shp_path)
-    if not shp_path.exists():
-        raise FileNotFoundError(f"No se encontró el shapefile: {shp_path}")
+    ruta = Path(ruta)
+    if not ruta.exists():
+        raise FileNotFoundError(f"No se encontró el archivo del lote: {ruta}")
 
+    # GeoJSON: camino directo, sin dependencias pesadas.
+    if ruta.suffix.lower() in (".geojson", ".json"):
+        geom = _cargar_geojson(ruta)
+        logger.info("AOI cargado desde GeoJSON: %s", ruta.name)
+        return _armar_resultado(geom)
+
+    shp_path = ruta
     try:
         geom = _cargar_con_geopandas(shp_path)
         logger.info("AOI cargado con geopandas.")
@@ -81,6 +106,10 @@ def cargar_aoi(shp_path: str | Path) -> dict:
         geom = _cargar_con_pyshp(shp_path)
         logger.info("AOI cargado con pyshp (fallback, sin atributos).")
 
+    return _armar_resultado(geom)
+
+
+def _armar_resultado(geom) -> dict:
     # Área aproximada en hectáreas usando una proyección equiareal simple
     # (suficiente para lotes chicos; para mayor precisión usar una UTM local).
     from pyproj import Geod
@@ -101,7 +130,7 @@ if __name__ == "__main__":
     import sys
 
     logging.basicConfig(level=logging.INFO)
-    info = cargar_aoi(sys.argv[1] if len(sys.argv) > 1 else "aoi/lote_20.shp")
+    info = cargar_aoi(sys.argv[1] if len(sys.argv) > 1 else "aoi/lote.geojson")
     print(json.dumps(info["geojson"], indent=2))
     print("BBox (W,S,E,N):", info["bbox"])
     print(f"Área: {info['area_ha']:.2f} ha")

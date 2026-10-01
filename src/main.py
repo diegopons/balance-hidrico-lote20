@@ -118,7 +118,9 @@ def main(config_path: str = "config.yaml") -> int:
         return 1
 
     # 2. AOI
-    aoi_info = cargar_aoi(cfg["aoi"]["shapefile"])
+    # 'archivo' es la clave actual; 'shapefile' se mantiene por compatibilidad
+    ruta_aoi = cfg["aoi"].get("archivo") or cfg["aoi"]["shapefile"]
+    aoi_info = cargar_aoi(ruta_aoi)
     log.info("Lote cargado: %.2f ha. BBox=%s", aoi_info["area_ha"], aoi_info["bbox"])
 
     # 3. Estado y suelo

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Definir el lote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+<style>
+  :root{
+    --fondo:#E6E9E1; --papel:#F5F6F1; --tinta:#2A2E27; --tinta-suave:#6B7166;
+    --linea:#C7CCC0; --agua:#1D5B6B; --agua-claro:#3E8296; --ok:#3F7245; --alerta:#A63D2E;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fondo);color:var(--tinta);
+       font-family:Archivo,system-ui,sans-serif;font-size:16px;line-height:1.55;
+       -webkit-font-smoothing:antialiased}
+  .envoltorio{max-width:1140px;margin:0 auto;padding:32px 24px 72px}
+  .cabecera{display:flex;justify-content:space-between;align-items:baseline;gap:24px;
+            flex-wrap:wrap;padding-bottom:18px;margin-bottom:28px;border-bottom:2px solid var(--tinta)}
+  .cabecera h1{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0}
+  .cabecera a{font-size:14px;color:var(--agua)}
+
+  .cols{display:grid;grid-template-columns:1fr 380px;gap:28px;align-items:start}
+  @media(max-width:900px){.cols{grid-template-columns:1fr}}
+
+  .panel{background:var(--papel);border:1px solid var(--linea);padding:20px}
+  h2{font-size:18px;font-weight:600;margin:0 0 4px}
+  .subtitulo{font-size:14px;color:var(--tinta-suave);margin:0 0 16px}
+
+  #mapa{height:520px;border:1px solid var(--linea)}
+  @media(max-width:900px){#mapa{height:380px}}
+
+  .medida{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+          padding:11px 0;border-bottom:1px solid var(--linea)}
+  .medida dt{font-size:14px;color:var(--tinta-suave);margin:0}
+  .medida dd{margin:0;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  dl{margin:0 0 18px;border-top:1px solid var(--linea)}
+
+  .acciones{display:flex;flex-direction:column;gap:10px}
+  button,.botonarchivo{
+    font-family:inherit;font-size:14.5px;font-weight:600;
+    padding:11px 16px;border:1px solid var(--tinta);background:var(--papel);
+    color:var(--tinta);cursor:pointer;text-align:center;display:block;width:100%;
+  }
+  button:hover,.botonarchivo:hover{background:var(--fondo)}
+  button.principal{background:var(--agua);border-color:var(--agua);color:#fff}
+  button.principal:hover{background:var(--agua-claro)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  input[type=file]{display:none}
+
+  textarea{width:100%;height:190px;font-family:ui-monospace,Menlo,Consolas,monospace;
+           font-size:12px;line-height:1.45;padding:12px;border:1px solid var(--linea);
+           background:#fff;color:var(--tinta);resize:vertical}
+
+  .aviso{padding:12px 14px;font-size:13.5px;line-height:1.45;margin-top:14px;
+         border-left:4px solid var(--agua-claro);background:#EDF3F5}
+  .aviso.error{border-left-color:var(--alerta);background:#FBEDEB}
+  .aviso.ok{border-left-color:var(--ok);background:#EFF4EC}
+
+  ol.pasos{margin:0;padding-left:20px;font-size:14.5px;color:var(--tinta)}
+  ol.pasos li{margin-bottom:8px}
+  code{background:var(--fondo);padding:1px 5px;font-size:13px;
+       font-family:ui-monospace,Menlo,Consolas,monospace}
+  .pie{margin-top:32px;padding-top:16px;border-top:1px solid var(--linea);
+       font-size:13px;color:var(--tinta-suave)}
+</style>
+</head>
+<body>
+<div class="envoltorio">
+
+  <header class="cabecera">
+    <h1>Definir el lote</h1>
+    <a href="index.html">← Volver al tablero</a>
+  </header>
+
+  <div class="cols">
+    <div>
+      <div class="panel">
+        <h2>Dibujá o cargá el lote</h2>
+        <p class="subtitulo">Usá la herramienta de polígono (arriba a la izquierda del mapa) o subí un archivo</p>
+        <div id="mapa"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Medidas</h2>
+        <p class="subtitulo">Verificá que la superficie sea la que esperabas</p>
+        <dl>
+          <div class="medida"><dt>Superficie</dt><dd id="m-area">—</dd></div>
+          <div class="medida"><dt>Perímetro</dt><dd id="m-perim">—</dd></div>
+          <div class="medida"><dt>Vértices</dt><dd id="m-vert">—</dd></div>
+          <div class="medida"><dt>Centro</dt><dd id="m-centro">—</dd></div>
+        </dl>
+
+        <div class="acciones">
+          <label class="botonarchivo" for="archivo">Subir archivo (GeoJSON, KML o ZIP)</label>
+          <input type="file" id="archivo" accept=".geojson,.json,.kml,.zip">
+          <button id="btn-limpiar">Borrar y empezar de nuevo</button>
+        </div>
+
+        <div id="aviso" class="aviso">Todavía no hay ningún lote dibujado.</div>
+      </div>
+
+      <div class="panel" style="margin-top:20px">
+        <h2>GeoJSON</h2>
+        <p class="subtitulo">Esto es lo que va al repositorio</p>
+        <textarea id="salida" readonly placeholder="Aparece acá cuando dibujes o cargues un lote."></textarea>
+        <div class="acciones" style="margin-top:12px">
+          <button id="btn-copiar" class="principal" disabled>Copiar al portapapeles</button>
+          <button id="btn-descargar" disabled>Descargar lote.geojson</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:28px">
+    <h2>Qué hacer con esto</h2>
+    <p class="subtitulo">El guardado se hace con un commit, por eso son dos pasos</p>
+    <ol class="pasos">
+      <li>Copiá el GeoJSON o descargá el archivo.</li>
+      <li>En el repositorio, abrí <code>aoi/lote.geojson</code> (o crealo con <strong>Add file → Create new file</strong> si todavía no existe), pegá el contenido y confirmá con <strong>Commit changes</strong>.</li>
+      <li>Si todavía no lo hiciste, cambiá en <code>config.yaml</code> la línea del lote a <code>shapefile: "aoi/lote.geojson"</code>.</li>
+      <li>Corré el flujo desde <strong>Actions → Run workflow</strong>. Al detectar que cambió el polígono, el balance se reinicia solo.</li>
+    </ol>
+    <div class="aviso">
+      Cambiar el lote invalida el balance acumulado del anterior: el agua útil, la profundidad de raíz y la serie histórica corresponden a otra superficie. El sistema lo detecta por su cuenta y empieza de cero, pero conviene saber que la serie previa queda en el CSV y no se borra.
+    </div>
+  </div>
+
+  <div class="pie">
+    Las coordenadas se expresan en latitud y longitud (EPSG:4326), que es lo que esperan tanto Copernicus como el resto del sistema. La superficie se calcula sobre el elipsoide WGS84.
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+<script src="https://unpkg.com/shpjs@6.1.0/dist/shp.min.js"></script>
+<script>
+// ===================== mapa =====================
+const CENTRO_DEFECTO = [-31.8724, -63.7414];   // lote 20, Córdoba
+const mapa = L.map('mapa').setView(CENTRO_DEFECTO, 15);
+
+const satelital = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {maxZoom:19, attribution:'Imagen: Esri, Maxar, Earthstar Geographics'}
+).addTo(mapa);
+
+const callejero = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {maxZoom:19, attribution:'© OpenStreetMap'});
+
+L.control.layers({'Satelital':satelital,'Mapa':callejero}, null, {position:'topright'}).addTo(mapa);
+
+const dibujado = new L.FeatureGroup().addTo(mapa);
+
+const control = new L.Control.Draw({
+  position: 'topleft',
+  draw: {
+    polygon: {allowIntersection:false, showArea:false,
+              shapeOptions:{color:'#1D5B6B', weight:3, fillOpacity:.25}},
+    rectangle: {shapeOptions:{color:'#1D5B6B', weight:3, fillOpacity:.25}},
+    polyline:false, circle:false, marker:false, circlemarker:false
+  },
+  edit: {featureGroup: dibujado, remove: true}
+});
+mapa.addControl(control);
+
+// ===================== cálculos =====================
+// Radio autálico de la WGS84: la esfera de igual superficie que el elipsoide.
+// Con el radio ecuatorial (6378137) el área sale ~0,3 % alta en latitudes medias.
+const R = 6371007.181;
+
+// Área geodésica de un anillo de coordenadas [lng, lat]
+function areaAnillo(coords){
+  let total = 0;
+  const n = coords.length;
+  if(n < 3) return 0;
+  for(let i=0; i<n; i++){
+    const [x1,y1] = coords[i];
+    const [x2,y2] = coords[(i+1)%n];
+    total += (x2-x1) * Math.PI/180 *
+             (2 + Math.sin(y1*Math.PI/180) + Math.sin(y2*Math.PI/180));
+  }
+  return Math.abs(total * R * R / 2);
+}
+
+function areaPoligono(geom){
+  if(geom.type === 'Polygon'){
+    let a = areaAnillo(geom.coordinates[0]);
+    for(let i=1;i<geom.coordinates.length;i++) a -= areaAnillo(geom.coordinates[i]);
+    return a;
+  }
+  if(geom.type === 'MultiPolygon'){
+    return geom.coordinates.reduce((acc,poly)=>{
+      let a = areaAnillo(poly[0]);
+      for(let i=1;i<poly.length;i++) a -= areaAnillo(poly[i]);
+      return acc + a;
+    },0);
+  }
+  return 0;
+}
+
+function perimetro(geom){
+  const dist = (a,b)=>{
+    const [x1,y1]=a, [x2,y2]=b;
+    const dy = (y2-y1)*Math.PI/180*R;
+    const dx = (x2-x1)*Math.PI/180*R*Math.cos((y1+y2)/2*Math.PI/180);
+    return Math.sqrt(dx*dx+dy*dy);
+  };
+  const anillos = geom.type==='Polygon' ? [geom.coordinates[0]]
+                : geom.type==='MultiPolygon' ? geom.coordinates.map(p=>p[0]) : [];
+  let p = 0;
+  anillos.forEach(c=>{ for(let i=0;i<c.length-1;i++) p += dist(c[i],c[i+1]); });
+  return p;
+}
+
+function contarVertices(geom){
+  if(geom.type==='Polygon') return geom.coordinates[0].length - 1;
+  if(geom.type==='MultiPolygon') return geom.coordinates.reduce((a,p)=>a+p[0].length-1,0);
+  return 0;
+}
+
+// Redondeo a 6 decimales: ~11 cm, de sobra para un lote y mantiene el archivo legible
+const redondear = g => JSON.parse(JSON.stringify(g, (k,v) =>
+  typeof v === 'number' ? Math.round(v*1e6)/1e6 : v));
+
+// ===================== estado =====================
+let geomActual = null;
+
+function mostrarAviso(texto, clase){
+  const el = document.getElementById('aviso');
+  el.className = 'aviso' + (clase ? ' ' + clase : '');
+  el.innerHTML = texto;
+}
+
+function actualizar(geom){
+  geomActual = geom ? redondear(geom) : null;
+  const hay = !!geomActual;
+
+  document.getElementById('btn-copiar').disabled = !hay;
+  document.getElementById('btn-descargar').disabled = !hay;
+
+  if(!hay){
+    ['m-area','m-perim','m-vert','m-centro'].forEach(id =>
+      document.getElementById(id).textContent = '—');
+    document.getElementById('salida').value = '';
+    mostrarAviso('Todavía no hay ningún lote dibujado.');
+    return;
+  }
+
+  const m2 = areaPoligono(geomActual);
+  const ha = m2/10000;
+  document.getElementById('m-area').textContent =
+    ha.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' ha';
+  document.getElementById('m-perim').textContent =
+    (perimetro(geomActual)/1000).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' km';
+  document.getElementById('m-vert').textContent = contarVertices(geomActual);
+
+  const capa = L.geoJSON(geomActual);
+  const c = capa.getBounds().getCenter();
+  document.getElementById('m-centro').textContent =
+    c.lat.toFixed(4) + ', ' + c.lng.toFixed(4);
+
+  document.getElementById('salida').value = JSON.stringify(
+    {type:'Feature', properties:{}, geometry: geomActual}, null, 2);
+
+  // Advertencias útiles antes de que el dato viaje al modelo
+  if(ha < 1){
+    mostrarAviso('<strong>Superficie muy chica (' + ha.toFixed(2) + ' ha).</strong> ' +
+      'Verificá que sea el lote completo. Un área menor a una hectárea queda por debajo ' +
+      'de la resolución de AgERA5 y puede dar pocos píxeles de Sentinel-2.', 'error');
+  } else if(ha > 10000){
+    mostrarAviso('<strong>Superficie muy grande (' + Math.round(ha).toLocaleString('es-AR') +
+      ' ha).</strong> El balance supone condiciones homogéneas en todo el polígono, ' +
+      'cosa que a esta escala difícilmente se cumpla.', 'error');
+  } else {
+    mostrarAviso('Lote listo: <strong>' + ha.toFixed(2) + ' ha</strong>. ' +
+      'Copiá el GeoJSON y seguí los pasos de abajo.', 'ok');
+  }
+}
+
+function ponerEnMapa(geom, encuadrar=true){
+  dibujado.clearLayers();
+  const capa = L.geoJSON(geom, {style:{color:'#1D5B6B', weight:3, fillOpacity:.25}});
+  capa.eachLayer(l => dibujado.addLayer(l));
+  if(encuadrar && dibujado.getLayers().length){
+    mapa.fitBounds(dibujado.getBounds(), {padding:[30,30]});
+  }
+  actualizar(geom);
+}
+
+function geomDeDibujo(){
+  const capas = dibujado.getLayers();
+  if(!capas.length) return null;
+  if(capas.length === 1) return capas[0].toGeoJSON().geometry;
+  return {type:'MultiPolygon',
+          coordinates: capas.map(l => l.toGeoJSON().geometry.coordinates)};
+}
+
+// ===================== eventos de dibujo =====================
+mapa.on(L.Draw.Event.CREATED, e => {
+  dibujado.clearLayers();           // un lote por vez
+  dibujado.addLayer(e.layer);
+  actualizar(geomDeDibujo());
+});
+mapa.on(L.Draw.Event.EDITED, () => actualizar(geomDeDibujo()));
+mapa.on(L.Draw.Event.DELETED, () => actualizar(geomDeDibujo()));
+
+// ===================== carga de archivos =====================
+function primeraGeometria(gj){
+  if(!gj) return null;
+  if(gj.type === 'FeatureCollection'){
+    const poligonos = gj.features
+      .map(f => f.geometry)
+      .filter(g => g && (g.type === 'Polygon' || g.type === 'MultiPolygon'));
+    if(!poligonos.length) return null;
+    if(poligonos.length === 1) return poligonos[0];
+    // varios polígonos: se unen como MultiPolygon
+    const coords = [];
+    poligonos.forEach(g => {
+      if(g.type === 'Polygon') coords.push(g.coordinates);
+      else g.coordinates.forEach(c => coords.push(c));
+    });
+    return {type:'MultiPolygon', coordinates: coords};
+  }
+  if(gj.type === 'Feature') return gj.geometry;
+  if(gj.type === 'Polygon' || gj.type === 'MultiPolygon') return gj;
+  return null;
+}
+
+document.getElementById('archivo').addEventListener('change', async ev => {
+  const file = ev.target.files[0];
+  if(!file) return;
+  const nombre = file.name.toLowerCase();
+  mostrarAviso('Leyendo <strong>' + file.name + '</strong>…');
+
+  try {
+    let gj = null;
+
+    if(nombre.endsWith('.geojson') || nombre.endsWith('.json')){
+      gj = JSON.parse(await file.text());
+
+    } else if(nombre.endsWith('.kml')){
+      const doc = new DOMParser().parseFromString(await file.text(), 'text/xml');
+      gj = toGeoJSON.kml(doc);
+
+    } else if(nombre.endsWith('.zip')){
+      gj = await shp(await file.arrayBuffer());
+      if(Array.isArray(gj)) gj = gj[0];
+
+    } else {
+      mostrarAviso('Formato no reconocido. Usá GeoJSON, KML o un ZIP con el shapefile completo.', 'error');
+      return;
+    }
+
+    const geom = primeraGeometria(gj);
+    if(!geom){
+      mostrarAviso('El archivo no contiene ningún polígono. ' +
+        'Si es un shapefile, el ZIP tiene que incluir los archivos .shp, .shx y .dbf juntos.', 'error');
+      return;
+    }
+    ponerEnMapa(geom);
+
+  } catch(err){
+    mostrarAviso('No se pudo leer el archivo: ' + err.message +
+      '<br>Si es un shapefile, revisá que el ZIP tenga .shp, .shx y .dbf.', 'error');
+  } finally {
+    ev.target.value = '';   // permite volver a elegir el mismo archivo
+  }
+});
+
+// ===================== botones =====================
+document.getElementById('btn-limpiar').addEventListener('click', () => {
+  dibujado.clearLayers();
+  actualizar(null);
+});
+
+document.getElementById('btn-copiar').addEventListener('click', async () => {
+  const texto = document.getElementById('salida').value;
+  const btn = document.getElementById('btn-copiar');
+  try {
+    await navigator.clipboard.writeText(texto);
+    btn.textContent = 'Copiado';
+    setTimeout(() => btn.textContent = 'Copiar al portapapeles', 1600);
+  } catch {
+    const ta = document.getElementById('salida');
+    ta.removeAttribute('readonly'); ta.select();
+    document.execCommand('copy');
+    ta.setAttribute('readonly','');
+    btn.textContent = 'Copiado';
+    setTimeout(() => btn.textContent = 'Copiar al portapapeles', 1600);
+  }
+});
+
+document.getElementById('btn-descargar').addEventListener('click', () => {
+  const blob = new Blob([document.getElementById('salida').value],
+                        {type:'application/geo+json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'lote.geojson';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// ===================== lote actual como punto de partida =====================
+fetch('lote_actual.geojson', {cache:'no-store'})
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(gj => {
+    const geom = primeraGeometria(gj);
+    if(geom){
+      ponerEnMapa(geom);
+      mostrarAviso('Se cargó el lote que está en uso. Podés editarlo con la herramienta ' +
+        'de edición del mapa, o dibujar uno nuevo.', 'ok');
+    }
+  })
+  .catch(() => { /* sin lote previo: se arranca en blanco */ });
+</script>
+</body>
+</html>
