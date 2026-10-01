@@ -28,3 +28,9 @@
 2026-10-01 12:46:00,369 [INFO] main: Lote cargado: 42.77 ha. BBox=(-63.74618467146993, -31.87656759206622, -63.73663195859382, -31.86820497308817)
 2026-10-01 12:46:00,369 [INFO] src.estado: Estado previo cargado: {'ultima_fecha_procesada': '2026-09-21', 'au_real_mm': 24.723333340883254, 'prof_raiz_cm': 200, 'ultimo_ndvi_valido': 0.25255560874938965}
 2026-10-01 12:46:00,371 [INFO] main: Nada nuevo para procesar todavía (último día procesado: 2026-09-21; próximo disponible recién el 2026-09-22 por el rezago de datos).
+2026-10-01 12:52:13,773 [INFO] main: ========== Nueva corrida de Balance Hídrico ==========
+2026-10-01 12:52:13,839 [WARNING] src.aoi: Falló la lectura con geopandas (fread(509) failed on DBF file.). Probando fallback pyshp...
+2026-10-01 12:52:13,843 [INFO] src.aoi: AOI cargado con pyshp (fallback, sin atributos).
+2026-10-01 12:52:13,844 [INFO] main: Lote cargado: 42.77 ha. BBox=(-63.74618467146993, -31.87656759206622, -63.73663195859382, -31.86820497308817)
+2026-10-01 12:52:13,844 [INFO] src.estado: Estado previo cargado: {'ultima_fecha_procesada': '2026-09-21', 'au_real_mm': 24.723333340883254, 'prof_raiz_cm': 200, 'ultimo_ndvi_valido': 0.25255560874938965}
+2026-10-01 12:52:13,846 [INFO] main: Nada nuevo para procesar todavía (último día procesado: 2026-09-21; próximo disponible recién el 2026-09-22 por el rezago de datos).
