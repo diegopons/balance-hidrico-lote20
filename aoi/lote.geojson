@@ -1,7 +1,7 @@
 {
   "type": "Feature",
   "properties": {
-    "nombre": "lote21"
+    "nombre": "Lote"
   },
   "geometry": {
     "type": "Polygon",
