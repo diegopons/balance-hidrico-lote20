@@ -115,16 +115,28 @@ def descargar_agera5(
         if not nc_files:
             raise RuntimeError("La descarga de AgERA5 no contiene archivos NetCDF esperados.")
 
+        logger.info("Archivos NetCDF recibidos: %s", [Path(p).name for p in nc_files])
+
         series = {}
         for nc_path in nc_files:
             ds = xr.open_dataset(nc_path)
             var_name = list(ds.data_vars)[0]
+            logger.info(
+                "  %s -> variables: %s", Path(nc_path).name, list(ds.data_vars)
+            )
             # Promedio espacial sobre el bbox (resolución ~10km, lote << celda)
             lat_dim = "lat" if "lat" in ds.dims else "latitude"
             lon_dim = "lon" if "lon" in ds.dims else "longitude"
             serie = ds[var_name].mean(dim=[lat_dim, lon_dim]).to_series()
             serie.index = pd.to_datetime(serie.index).normalize()
-            clave = "precipitacion_mm" if "precipitation" in var_name.lower() else "eto_mm"
+            texto = (var_name + " " + Path(nc_path).name).lower()
+            if "precipitation" in texto or "precip" in texto:
+                clave = "precipitacion_mm"
+            elif "evapo" in texto or "eto" in texto or "et0" in texto:
+                clave = "eto_mm"
+            else:
+                logger.warning("Variable no reconocida, se ignora: %s", var_name)
+                continue
             series[clave] = serie
             ds.close()
 
