@@ -1,0 +1,24 @@
+2026-10-01 12:17:29,924 [INFO] main: ========== Nueva corrida de Balance Hídrico ==========
+2026-10-01 12:17:30,013 [WARNING] src.aoi: Falló la lectura con geopandas (fread(509) failed on DBF file.). Probando fallback pyshp...
+2026-10-01 12:17:30,017 [INFO] src.aoi: AOI cargado con pyshp (fallback, sin atributos).
+2026-10-01 12:17:30,017 [INFO] main: Lote cargado: 42.77 ha. BBox=(-63.74618467146993, -31.87656759206622, -63.73663195859382, -31.86820497308817)
+2026-10-01 12:17:30,017 [INFO] src.estado: No hay estado previo. Se inicializa AU=40.0 mm, profundidad de raíz=10 cm.
+2026-10-01 12:17:30,019 [INFO] main: Procesando rango nuevo: 2026-05-23 -> 2026-09-21
+2026-10-01 12:17:30,019 [INFO] main: Descargando NDVI (Sentinel-2 / CDSE Statistical API)...
+2026-10-01 12:17:30,832 [INFO] src.auth_cdse: Token CDSE obtenido, válido por 1800 s.
+2026-10-01 12:18:00,305 [INFO] main: NDVI: 12 días con dato válido de 16 días del rango.
+2026-10-01 12:18:00,305 [INFO] main: Descargando precipitación y ETo (CDS / AgERA5)...
+2026-10-01 12:18:00,541 [INFO] src.clima_agera5: Usando credenciales de CDS desde variables de entorno.
+2026-10-01 12:18:02,505 [INFO] src.clima_agera5: Solicitando AgERA5 a CDS: 2026-05-23 a 2026-09-21, bbox=[-31.71820497308817, -63.89618467146993, -32.02656759206622, -63.58663195859382]
+2026-10-01 12:18:02,847 [INFO] ecmwf.datastores.legacy_client: [2026-06-17T00:00:00] As announced on our [Forum post](https://forum.ecmwf.int/t/agera5-version-1-1-to-be-deprecated-please-use-agera5-version-2-if-not-already/14940), the superseded AgERA5 version 1.1. is no longer updated and will subsequently be deprecated (along with version 1) later this year. AgERA5 v2 remains updated on a daily basis.
+2026-10-01 12:18:02,847 [INFO] ecmwf.datastores.legacy_client: Request ID is 9bed946e-d6e2-40f4-8387-32b914f98372
+2026-10-01 12:18:03,034 [INFO] ecmwf.datastores.legacy_client: status has been updated to accepted
+2026-10-01 12:18:25,502 [INFO] ecmwf.datastores.legacy_client: status has been updated to running
+2026-10-01 12:18:54,231 [INFO] ecmwf.datastores.legacy_client: status has been updated to successful
+2026-10-01 12:18:54,484 [INFO] multiurl.base: Downloading https://object-store.os-api.cci2.ecmwf.int:443/cci2-prod-cache-3/2026-10-01/cbccbbde8191016dcdf9d3c679e14725.zip
+2026-10-01 12:18:57,218 [WARNING] src.clima_agera5: No se encontró variable 'eto_mm' en la respuesta de AgERA5.
+2026-10-01 12:18:57,253 [INFO] src.estado: CSV actualizado: data/balance_hidrico_lote20.csv (122 filas totales)
+2026-10-01 12:18:57,254 [INFO] main: Última fecha procesada: 2026-09-21 | %AU=7.7 | AU real=24.7 mm | NDVI=0.253
+2026-10-01 12:18:57,254 [WARNING] main: ⚠️  ALERTA DE RIEGO: % Agua Útil (7.7%) por debajo del umbral (50%).
+2026-10-01 12:18:58,211 [INFO] src.notificaciones: Notificación de Telegram enviada.
+2026-10-01 12:18:58,212 [INFO] main: Corrida finalizada OK.
