@@ -89,6 +89,7 @@ jobs:
             echo "Sin cambios para guardar (probablemente no había días nuevos)."
           else
             git commit -m "Balance hídrico automático - $(date -u +'%Y-%m-%d')"
+            git pull --rebase origin main
             git push
           fi
 
