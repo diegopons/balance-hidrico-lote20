@@ -6,7 +6,7 @@ aoi:
   shapefile: "aoi/lote_20.shp"
 
 campana:
-  fecha_siembra: "2025-05-23"      # usada solo la primera vez (estado inicial)
+  fecha_siembra: "2026-05-23"      # usada solo la primera vez (estado inicial)
   au_real_inicial_mm: 40.0
   prof_raiz_inicial_cm: 10
 
