@@ -461,8 +461,17 @@ botonesNav.forEach(b => b.addEventListener('click', () => {
   botonesNav.forEach(x => x.setAttribute('aria-selected', String(x === b)));
   document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
   document.getElementById('s-' + b.dataset.seccion).classList.add('activa');
-  // Leaflet necesita recalcular el tamaño al mostrarse dentro de un contenedor oculto
-  if(b.dataset.seccion === 'lote' && window.mapa) setTimeout(() => window.mapa.invalidateSize(), 60);
+  // Leaflet mide el contenedor al crearse. Si la pestaña estaba oculta, ese
+  // tamaño era cero y el encuadre quedó mal: hay que recalcular y volver a
+  // encuadrar sobre el lote, o el polígono queda fuera de la vista.
+  if(b.dataset.seccion === 'lote' && window.mapa){
+    setTimeout(() => {
+      window.mapa.invalidateSize();
+      if(window.dibujado && window.dibujado.getLayers().length){
+        window.mapa.fitBounds(window.dibujado.getBounds(), {padding:[30,30], maxZoom:17});
+      }
+    }, 80);
+  }
 }));
 </script>
 
@@ -740,24 +749,28 @@ function dibujarTabla(datos){
 const CENTRO_DEFECTO = [-31.8724, -63.7414];   // lote 20, Córdoba
 const mapa = window.mapa = L.map('mapa').setView(CENTRO_DEFECTO, 15);
 
+// maxNativeZoom evita pedirle a Esri niveles de zoom que no tiene en zonas
+// rurales (devuelve un mosaico que dice "Map data not yet available").
+// Leaflet amplía el último nivel disponible, que se ve algo más blando pero
+// siempre muestra el terreno.
 const satelital = L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  {maxZoom:19, attribution:'Imagen: Esri, Maxar, Earthstar Geographics'}
+  {maxZoom:19, maxNativeZoom:17, attribution:'Imagen: Esri, Maxar, Earthstar Geographics'}
 ).addTo(mapa);
 
 const callejero = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  {maxZoom:19, attribution:'© OpenStreetMap'});
+  {maxZoom:19, maxNativeZoom:18, attribution:'© OpenStreetMap'});
 
 L.control.layers({'Satelital':satelital,'Mapa':callejero}, null, {position:'topright'}).addTo(mapa);
 
-const dibujado = new L.FeatureGroup().addTo(mapa);
+const dibujado = window.dibujado = new L.FeatureGroup().addTo(mapa);
 
 const control = new L.Control.Draw({
   position: 'topleft',
   draw: {
     polygon: {allowIntersection:false, showArea:false,
-              shapeOptions:{color:'#1D5B6B', weight:3, fillOpacity:.25}},
-    rectangle: {shapeOptions:{color:'#1D5B6B', weight:3, fillOpacity:.25}},
+              shapeOptions:{color:'#FFD24A', weight:3, fillColor:'#1D5B6B', fillOpacity:.3}},
+    rectangle: {shapeOptions:{color:'#FFD24A', weight:3, fillColor:'#1D5B6B', fillOpacity:.3}},
     polyline:false, circle:false, marker:false, circlemarker:false
   },
   edit: {featureGroup: dibujado, remove: true}
@@ -882,10 +895,13 @@ function actualizar(geom){
 
 function ponerEnMapa(geom, encuadrar=true){
   dibujado.clearLayers();
-  const capa = L.geoJSON(geom, {style:{color:'#1D5B6B', weight:3, fillOpacity:.25}});
+  // amarillo para el contorno: es el color que mejor se separa del verde y
+  // el marrón de una imagen satelital de campo
+  const capa = L.geoJSON(geom, {style:{color:'#FFD24A', weight:3,
+                                       fillColor:'#1D5B6B', fillOpacity:.3}});
   capa.eachLayer(l => dibujado.addLayer(l));
   if(encuadrar && dibujado.getLayers().length){
-    mapa.fitBounds(dibujado.getBounds(), {padding:[30,30]});
+    mapa.fitBounds(dibujado.getBounds(), {padding:[30,30], maxZoom:17});
   }
   actualizar(geom);
 }
