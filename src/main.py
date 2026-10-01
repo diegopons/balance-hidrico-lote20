@@ -87,6 +87,48 @@ def aplicar_parametros_de_entorno(cfg: dict, log) -> dict:
     return cfg
 
 
+def enviar_resumen_actual(cfg: dict, log) -> None:
+    """Reenvía por Telegram el estado del último día calculado.
+
+    Se usa cuando se pide un resumen a demanda y no hay días nuevos que
+    procesar: en vez de no mandar nada, se lee la última fila del CSV
+    histórico y se arma el mensaje con eso.
+    """
+    ruta_csv = Path(cfg["rutas"]["salida_csv"])
+    if not ruta_csv.exists():
+        log.warning("Se pidió un resumen pero todavía no hay resultados calculados.")
+        return
+
+    df = pd.read_csv(ruta_csv, parse_dates=["fecha"])
+    if df.empty:
+        log.warning("Se pidió un resumen pero el CSV está vacío.")
+        return
+
+    tg_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    tg_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    if not tg_token or not tg_chat_id:
+        log.warning("Se pidió un resumen pero faltan las credenciales de Telegram.")
+        return
+
+    ultimo = df.iloc[-1]
+    cfg_tg = cfg.get("telegram", {})
+    mensaje = armar_mensaje(
+        fecha=ultimo["fecha"].date(),
+        au_real_mm=float(ultimo["au_real_mm"]),
+        au_max_mm=float(ultimo["au_max_mm"]),
+        pct_au=float(ultimo["pct_au"]),
+        ndvi=float(ultimo["ndvi"]),
+        etc_mm=float(ultimo["etc_ajustada_mm"]),
+        precipitacion_7d_mm=float(df.tail(7)["precipitacion_mm"].sum()),
+        umbral_riego_pct=cfg["balance"]["umbral_riego_pct"],
+        nombre_lote=cfg_tg.get("nombre_lote", "Lote"),
+        eficiencia_aplicacion=cfg_tg.get("eficiencia_aplicacion", 0.85),
+        reposicion_objetivo_pct=cfg_tg.get("reposicion_objetivo_pct", 100.0),
+    )
+    if enviar_telegram(tg_token, tg_chat_id, mensaje):
+        log.info("Resumen enviado por Telegram (datos al %s).", ultimo["fecha"].date())
+
+
 def configurar_logging(log_file: str) -> None:
     Path(log_file).parent.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(
@@ -106,6 +148,7 @@ def main(config_path: str = "config.yaml") -> int:
     # Parámetros que pueden llegar del formulario de "Run workflow"
     cfg = aplicar_parametros_de_entorno(cfg, log)
     reiniciar_estado = _env_bool("BH_REINICIAR_ESTADO")
+    enviar_resumen = _env_bool("BH_ENVIAR_RESUMEN")
 
     # 1. Credenciales (nunca en config.yaml)
     cdse_client_id = os.environ.get("CDSE_CLIENT_ID")
@@ -152,6 +195,8 @@ def main(config_path: str = "config.yaml") -> int:
             estado.ultima_fecha_procesada,
             (fecha_desde + timedelta(days=0)).date(),
         )
+        if enviar_resumen:
+            enviar_resumen_actual(cfg, log)
         return 0
 
     fecha_desde_str = fecha_desde.strftime("%Y-%m-%d")
@@ -251,7 +296,8 @@ def main(config_path: str = "config.yaml") -> int:
                     if au_max_ref > 0:
                         pct_au_previo = (estado.au_real_mm / au_max_ref) * 100
 
-                if debe_notificar(
+                # Un resumen pedido a mano se manda siempre, sin importar el modo
+                if enviar_resumen or debe_notificar(
                     float(ultimo["pct_au"]),
                     pct_au_previo,
                     umbral,

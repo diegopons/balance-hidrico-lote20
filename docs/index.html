@@ -3,11 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Balance hídrico — Lote 20</title>
+<title>Balance hídrico</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
 <style>
+
   :root{
     /* Horizontes del perfil: del más orgánico en superficie al más profundo */
     --h1:#8A6A44; --h2:#9C7B50; --h3:#AD8C5F; --h4:#BC9C70; --h5:#C9AC83;
@@ -140,31 +143,100 @@
   }
   .leyenda span{display:flex;align-items:center;gap:7px}
   .llave{width:14px;height:3px;display:inline-block}
+
+
+  /* ---------- navegación entre secciones ---------- */
+  nav.secciones{display:flex;gap:2px;margin-bottom:24px;border-bottom:2px solid var(--tinta)}
+  nav.secciones button{
+    font-family:inherit;font-size:15px;font-weight:600;padding:11px 20px;
+    border:none;background:transparent;color:var(--tinta-suave);cursor:pointer;
+    border-bottom:3px solid transparent;margin-bottom:-2px;width:auto}
+  nav.secciones button:hover{color:var(--tinta);background:transparent}
+  nav.secciones button[aria-selected="true"]{color:var(--tinta);border-bottom-color:var(--agua)}
+  .seccion{display:none}
+  .seccion.activa{display:block}
+
+  /* ---------- mapa y formularios ---------- */
+  #mapa{height:500px;border:1px solid var(--linea)}
+  @media(max-width:900px){#mapa{height:360px}}
+  .cols{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start}
+  @media(max-width:900px){.cols{grid-template-columns:1fr}}
+
+  .campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+  .campo label{display:block;font-size:13.5px;font-weight:600;margin-bottom:5px}
+  .campo .pista{display:block;font-size:12.5px;color:var(--tinta-suave);
+                font-weight:400;margin-top:4px;line-height:1.35}
+  .campo input,.campo select{
+    width:100%;font-family:inherit;font-size:14.5px;padding:9px 10px;
+    border:1px solid var(--linea);background:#fff;color:var(--tinta)}
+  .campo input:focus,.campo select:focus{outline:2px solid var(--agua-claro);outline-offset:-1px}
+  .casilla{display:flex;align-items:flex-start;gap:9px;font-size:14px;margin-top:4px}
+  .casilla input{margin-top:3px;width:auto}
+
+  button,.botonarchivo{
+    font-family:inherit;font-size:14.5px;font-weight:600;padding:11px 16px;
+    border:1px solid var(--tinta);background:var(--papel);color:var(--tinta);
+    cursor:pointer;text-align:center;display:block;width:100%}
+  button:hover,.botonarchivo:hover{background:var(--fondo)}
+  button.principal{background:var(--agua);border-color:var(--agua);color:#fff}
+  button.principal:hover{background:var(--agua-claro)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  input[type=file]{display:none}
+  .acciones{display:flex;flex-direction:column;gap:10px}
+
+  textarea{width:100%;height:150px;font-family:ui-monospace,Menlo,Consolas,monospace;
+           font-size:12px;line-height:1.45;padding:12px;border:1px solid var(--linea);
+           background:#fff;color:var(--tinta);resize:vertical}
+
+  .medida{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+          padding:11px 0;border-bottom:1px solid var(--linea)}
+  .medida dt{font-size:14px;color:var(--tinta-suave);margin:0}
+  .medida dd{margin:0;font-size:18px;font-weight:600;
+             font-variant-numeric:tabular-nums;white-space:nowrap}
+  dl.medidas{margin:0 0 18px;border-top:1px solid var(--linea)}
+
+  .aviso{padding:12px 14px;font-size:13.5px;line-height:1.45;margin-top:14px;
+         border-left:4px solid var(--agua-claro);background:#EDF3F5;
+         text-align:left;border-top:0;border-right:0;border-bottom:0}
+  .aviso p{margin:0;max-width:none;text-align:left}
+  .aviso.error{border-left-color:var(--alerta);background:#FBEDEB}
+  .aviso.ok{border-left-color:var(--optimo);background:#EFF4EC}
+
+  .registro{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
+            line-height:1.6;background:#fff;border:1px solid var(--linea);
+            padding:12px;margin-top:14px;max-height:230px;overflow:auto;display:none}
+  .registro.visible{display:block}
+  .registro .l-ok{color:var(--optimo)}
+  .registro .l-err{color:var(--alerta)}
+  .registro .l-info{color:var(--tinta-suave)}
+
 </style>
 </head>
 <body>
 <div class="envoltorio">
 
   <header class="cabecera">
-    <h1>Balance hídrico — Lote 20</h1>
-    <div class="meta">
-      <a href="lote.html" style="color:var(--agua)">Cambiar el lote</a>
-      <span style="margin:0 8px;color:var(--linea)">·</span>
-      <span id="meta">Cargando…</span>
-    </div>
+    <h1>Balance hídrico — <span id="titulo-lote">Lote 20</span></h1>
+    <div class="meta" id="meta">Cargando…</div>
   </header>
 
-  <div id="cargando" class="aviso">
-    <h2>Cargando datos</h2>
-    <p>Leyendo la serie del balance.</p>
-  </div>
+  <nav class="secciones" role="tablist">
+    <button role="tab" aria-selected="true"  data-seccion="estado">Estado</button>
+    <button role="tab" aria-selected="false" data-seccion="lote">Lote</button>
+    <button role="tab" aria-selected="false" data-seccion="correr">Parámetros y ejecución</button>
+  </nav>
 
-  <div id="sin-datos" class="aviso oculto">
-    <h2>Todavía no hay resultados</h2>
-    <p>El tablero se llena solo cuando el sistema procesa su primer día con datos. Para forzar una corrida ahora, entrá a la pestaña <strong>Actions</strong> del repositorio y usá <strong>Run workflow</strong>.</p>
-  </div>
+  <!-- ======================= ESTADO ======================= -->
+  <section class="seccion activa" id="s-estado">
+    <div id="cargando" class="aviso">Leyendo la serie del balance…</div>
 
-  <main id="contenido" class="oculto">
+    <div id="sin-datos" class="aviso oculto">
+      <strong>Todavía no hay resultados.</strong>
+      El tablero se llena cuando el sistema procesa su primer día con datos.
+      Podés lanzarlo desde la pestaña «Parámetros y ejecución».
+    </div>
+
+    <main id="contenido" class="oculto">
 
     <!-- ====== ESTADO ACTUAL + PERFIL DE SUELO ====== -->
     <div class="principal">
@@ -229,7 +301,170 @@
       <p>La lámina sugerida es la que falta para llegar a capacidad de campo, corregida por la eficiencia de aplicación. No contempla el pronóstico de lluvia ni la capacidad del equipo: tomala como un dato de apoyo para decidir, no como la decisión.</p>
     </div>
   </main>
+  </section>
+
+  <!-- ======================= LOTE ======================= -->
+  <section class="seccion" id="s-lote">
+      <div class="cols">
+        <div class="panel">
+          <h2>Dibujá o cargá el lote</h2>
+          <p class="subtitulo">Usá la herramienta de polígono del mapa o subí un archivo</p>
+          <div id="mapa"></div>
+        </div>
+
+        <div>
+          <div class="panel">
+            <h2>Medidas</h2>
+            <p class="subtitulo">Verificá que la superficie sea la esperada</p>
+            <dl class="medidas">
+              <div class="medida"><dt>Superficie</dt><dd id="m-area">—</dd></div>
+              <div class="medida"><dt>Perímetro</dt><dd id="m-perim">—</dd></div>
+              <div class="medida"><dt>Vértices</dt><dd id="m-vert">—</dd></div>
+              <div class="medida"><dt>Centro</dt><dd id="m-centro">—</dd></div>
+            </dl>
+            <div class="acciones">
+              <label class="botonarchivo" for="archivo">Subir archivo (GeoJSON, KML o ZIP)</label>
+              <input type="file" id="archivo" accept=".geojson,.json,.kml,.zip">
+              <button id="btn-limpiar">Borrar y empezar de nuevo</button>
+            </div>
+            <div id="aviso" class="aviso">Todavía no hay ningún lote dibujado.</div>
+          </div>
+
+          <details class="panel" style="margin-top:18px">
+            <summary style="cursor:pointer;font-weight:600;font-size:15px">Ver el GeoJSON</summary>
+            <textarea id="salida" readonly style="margin-top:12px"></textarea>
+            <div class="acciones" style="margin-top:10px">
+              <button id="btn-copiar" disabled>Copiar</button>
+              <button id="btn-descargar" disabled>Descargar lote.geojson</button>
+            </div>
+          </details>
+        </div>
+      </div>
+  </section>
+
+  <!-- ================ PARÁMETROS Y EJECUCIÓN ================ -->
+  <section class="seccion" id="s-correr">
+  <div class="panel" >
+    <h2>Parámetros de inicio</h2>
+    <p class="subtitulo">Los que dejes vacíos se toman de la configuración guardada</p>
+
+    <div class="campos">
+      <div class="campo">
+        <label for="f-siembra">Fecha de siembra</label>
+        <input type="date" id="f-siembra">
+        <span class="pista">Desde cuándo se calcula el balance</span>
+      </div>
+      <div class="campo">
+        <label for="f-au">Agua útil inicial (mm)</label>
+        <input type="number" id="f-au" step="0.1" min="0" placeholder="40">
+        <span class="pista">Lámina disponible estimada a la siembra</span>
+      </div>
+      <div class="campo">
+        <label for="f-raiz">Profundidad de raíz inicial (cm)</label>
+        <input type="number" id="f-raiz" step="1" min="0" placeholder="10">
+      </div>
+      <div class="campo">
+        <label for="f-umbral">Umbral de riego (% de agua útil)</label>
+        <input type="number" id="f-umbral" step="1" min="0" max="100" placeholder="50">
+        <span class="pista">Por debajo de este valor se dispara la alerta</span>
+      </div>
+      <div class="campo">
+        <label for="f-nombre">Nombre del lote</label>
+        <input type="text" id="f-nombre" placeholder="Lote 20">
+        <span class="pista">Aparece en el aviso de Telegram</span>
+      </div>
+      <div class="campo">
+        <label for="f-modo">Cuándo avisar por Telegram</label>
+        <select id="f-modo">
+          <option value="">(usar config)</option>
+          <option value="cruce">Al cruzar el umbral hacia abajo</option>
+          <option value="deficit">Todos los días en déficit</option>
+          <option value="siempre">En cada corrida</option>
+        </select>
+      </div>
+    </div>
+
+    <label class="casilla" style="margin-top:18px">
+      <input type="checkbox" id="f-resumen">
+      <span>Enviar el resumen por Telegram al terminar.
+        <span style="color:var(--tinta-suave)">Aunque no haya días nuevos y aunque el
+        modo de aviso no corresponda. El mensaje sale desde el servidor: el token del
+        bot no pasa por el navegador.</span></span>
+    </label>
+
+    <label class="casilla" style="margin-top:12px">
+      <input type="checkbox" id="f-reiniciar">
+      <span>Reiniciar el balance desde cero.
+        <span style="color:var(--tinta-suave)">Si cambiaste el lote o la fecha de siembra,
+        el reinicio ocurre solo: esta casilla es para forzarlo en otros casos.</span></span>
+    </label>
+  </div>
+
+  <div class="panel" style="margin-top:22px">
+    <h2>Guardar y ejecutar</h2>
+    <p class="subtitulo">Escribe el lote en el repositorio y lanza una corrida</p>
+
+    <div class="campo" style="max-width:520px;margin-bottom:16px">
+      <label for="f-repo">Repositorio</label>
+      <input type="text" id="f-repo" placeholder="usuario/repositorio">
+      <span class="pista">Se detecta solo desde la dirección de la página. Corregilo si no coincide.</span>
+    </div>
+
+    <div class="campo" style="max-width:520px">
+      <label for="f-token">Token de GitHub</label>
+      <input type="password" id="f-token" placeholder="github_pat_...">
+      <span class="pista">
+        Token <em>fine-grained</em>, limitado a este repositorio, con permisos
+        <strong>Contents</strong> y <strong>Actions</strong> en lectura y escritura.
+        Se usa solo desde tu navegador: no viaja a ningún otro lado ni queda en el repositorio.
+      </span>
+    </div>
+
+    <label class="casilla" style="margin-top:14px">
+      <input type="checkbox" id="f-recordar">
+      <span>Recordarlo en este navegador.
+        <span style="color:var(--tinta-suave)">Cómodo en tu máquina; evitalo en una
+        compartida. Si no lo tildás, se olvida al cerrar la pestaña.</span></span>
+    </label>
+
+    <div class="acciones" style="margin-top:18px;max-width:520px">
+      <button id="btn-guardar" class="principal" disabled>Guardar lote y ejecutar</button>
+      <button id="btn-olvidar">Olvidar el token guardado</button>
+    </div>
+
+    <div class="registro" id="registro"></div>
+
+    <div class="aviso" style="margin-top:16px">
+      Cambiar el lote invalida el balance acumulado del anterior: el agua útil, la profundidad
+      de raíz y la serie histórica corresponden a otra superficie. El sistema lo detecta por su
+      cuenta y empieza de cero, pero la serie previa queda en el CSV y no se borra.
+    </div>
+  </div>
+
+  </section>
+
+  <div class="pie">
+    Las coordenadas se expresan en latitud y longitud (EPSG:4326). La superficie se calcula
+    sobre el elipsoide WGS84. NDVI de Sentinel-2 (Copernicus Data Space); lluvia y
+    evapotranspiración de AgERA5 (Climate Data Store).
+  </div>
 </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+<script src="https://unpkg.com/shpjs@6.1.0/dist/shp.min.js"></script>
+<script>
+// ===================== navegación entre secciones =====================
+const botonesNav = document.querySelectorAll('nav.secciones button');
+botonesNav.forEach(b => b.addEventListener('click', () => {
+  botonesNav.forEach(x => x.setAttribute('aria-selected', String(x === b)));
+  document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
+  document.getElementById('s-' + b.dataset.seccion).classList.add('activa');
+  // Leaflet necesita recalcular el tamaño al mostrarse dentro de un contenedor oculto
+  if(b.dataset.seccion === 'lote' && window.mapa) setTimeout(() => window.mapa.invalidateSize(), 60);
+}));
+</script>
 
 <script>
 // ===================== configuración =====================
@@ -497,6 +732,522 @@ function dibujarTabla(datos){
   });
   document.getElementById("tabla").innerHTML = h + "</tbody>";
 }
+
+</script>
+
+<script>
+// ===================== mapa =====================
+const CENTRO_DEFECTO = [-31.8724, -63.7414];   // lote 20, Córdoba
+const mapa = window.mapa = L.map('mapa').setView(CENTRO_DEFECTO, 15);
+
+const satelital = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {maxZoom:19, attribution:'Imagen: Esri, Maxar, Earthstar Geographics'}
+).addTo(mapa);
+
+const callejero = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {maxZoom:19, attribution:'© OpenStreetMap'});
+
+L.control.layers({'Satelital':satelital,'Mapa':callejero}, null, {position:'topright'}).addTo(mapa);
+
+const dibujado = new L.FeatureGroup().addTo(mapa);
+
+const control = new L.Control.Draw({
+  position: 'topleft',
+  draw: {
+    polygon: {allowIntersection:false, showArea:false,
+              shapeOptions:{color:'#1D5B6B', weight:3, fillOpacity:.25}},
+    rectangle: {shapeOptions:{color:'#1D5B6B', weight:3, fillOpacity:.25}},
+    polyline:false, circle:false, marker:false, circlemarker:false
+  },
+  edit: {featureGroup: dibujado, remove: true}
+});
+mapa.addControl(control);
+
+// ===================== cálculos =====================
+// Radio autálico de la WGS84: la esfera de igual superficie que el elipsoide.
+// Con el radio ecuatorial (6378137) el área sale ~0,3 % alta en latitudes medias.
+const R = 6371007.181;
+
+// Área geodésica de un anillo de coordenadas [lng, lat]
+function areaAnillo(coords){
+  let total = 0;
+  const n = coords.length;
+  if(n < 3) return 0;
+  for(let i=0; i<n; i++){
+    const [x1,y1] = coords[i];
+    const [x2,y2] = coords[(i+1)%n];
+    total += (x2-x1) * Math.PI/180 *
+             (2 + Math.sin(y1*Math.PI/180) + Math.sin(y2*Math.PI/180));
+  }
+  return Math.abs(total * R * R / 2);
+}
+
+function areaPoligono(geom){
+  if(geom.type === 'Polygon'){
+    let a = areaAnillo(geom.coordinates[0]);
+    for(let i=1;i<geom.coordinates.length;i++) a -= areaAnillo(geom.coordinates[i]);
+    return a;
+  }
+  if(geom.type === 'MultiPolygon'){
+    return geom.coordinates.reduce((acc,poly)=>{
+      let a = areaAnillo(poly[0]);
+      for(let i=1;i<poly.length;i++) a -= areaAnillo(poly[i]);
+      return acc + a;
+    },0);
+  }
+  return 0;
+}
+
+function perimetro(geom){
+  const dist = (a,b)=>{
+    const [x1,y1]=a, [x2,y2]=b;
+    const dy = (y2-y1)*Math.PI/180*R;
+    const dx = (x2-x1)*Math.PI/180*R*Math.cos((y1+y2)/2*Math.PI/180);
+    return Math.sqrt(dx*dx+dy*dy);
+  };
+  const anillos = geom.type==='Polygon' ? [geom.coordinates[0]]
+                : geom.type==='MultiPolygon' ? geom.coordinates.map(p=>p[0]) : [];
+  let p = 0;
+  anillos.forEach(c=>{ for(let i=0;i<c.length-1;i++) p += dist(c[i],c[i+1]); });
+  return p;
+}
+
+function contarVertices(geom){
+  if(geom.type==='Polygon') return geom.coordinates[0].length - 1;
+  if(geom.type==='MultiPolygon') return geom.coordinates.reduce((a,p)=>a+p[0].length-1,0);
+  return 0;
+}
+
+// Redondeo a 6 decimales: ~11 cm, de sobra para un lote y mantiene el archivo legible
+const redondear = g => JSON.parse(JSON.stringify(g, (k,v) =>
+  typeof v === 'number' ? Math.round(v*1e6)/1e6 : v));
+
+// ===================== estado =====================
+let geomActual = null;
+
+function mostrarAviso(texto, clase){
+  const el = document.getElementById('aviso');
+  el.className = 'aviso' + (clase ? ' ' + clase : '');
+  el.innerHTML = texto;
+}
+
+function actualizar(geom){
+  geomActual = geom ? redondear(geom) : null;
+  const hay = !!geomActual;
+
+  document.getElementById('btn-copiar').disabled = !hay;
+  document.getElementById('btn-descargar').disabled = !hay;
+  const bg = document.getElementById('btn-guardar');
+  if(bg) bg.disabled = !hay;
+
+  if(!hay){
+    ['m-area','m-perim','m-vert','m-centro'].forEach(id =>
+      document.getElementById(id).textContent = '—');
+    document.getElementById('salida').value = '';
+    mostrarAviso('Todavía no hay ningún lote dibujado.');
+    return;
+  }
+
+  const m2 = areaPoligono(geomActual);
+  const ha = m2/10000;
+  document.getElementById('m-area').textContent =
+    ha.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' ha';
+  document.getElementById('m-perim').textContent =
+    (perimetro(geomActual)/1000).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' km';
+  document.getElementById('m-vert').textContent = contarVertices(geomActual);
+
+  const capa = L.geoJSON(geomActual);
+  const c = capa.getBounds().getCenter();
+  document.getElementById('m-centro').textContent =
+    c.lat.toFixed(4) + ', ' + c.lng.toFixed(4);
+
+  document.getElementById('salida').value = JSON.stringify(
+    {type:'Feature', properties:{}, geometry: geomActual}, null, 2);
+
+  // Advertencias útiles antes de que el dato viaje al modelo
+  if(ha < 1){
+    mostrarAviso('<strong>Superficie muy chica (' + ha.toFixed(2) + ' ha).</strong> ' +
+      'Verificá que sea el lote completo. Un área menor a una hectárea queda por debajo ' +
+      'de la resolución de AgERA5 y puede dar pocos píxeles de Sentinel-2.', 'error');
+  } else if(ha > 10000){
+    mostrarAviso('<strong>Superficie muy grande (' + Math.round(ha).toLocaleString('es-AR') +
+      ' ha).</strong> El balance supone condiciones homogéneas en todo el polígono, ' +
+      'cosa que a esta escala difícilmente se cumpla.', 'error');
+  } else {
+    mostrarAviso('Lote listo: <strong>' + ha.toFixed(2) + ' ha</strong>. ' +
+      'Copiá el GeoJSON y seguí los pasos de abajo.', 'ok');
+  }
+}
+
+function ponerEnMapa(geom, encuadrar=true){
+  dibujado.clearLayers();
+  const capa = L.geoJSON(geom, {style:{color:'#1D5B6B', weight:3, fillOpacity:.25}});
+  capa.eachLayer(l => dibujado.addLayer(l));
+  if(encuadrar && dibujado.getLayers().length){
+    mapa.fitBounds(dibujado.getBounds(), {padding:[30,30]});
+  }
+  actualizar(geom);
+}
+
+function geomDeDibujo(){
+  const capas = dibujado.getLayers();
+  if(!capas.length) return null;
+  if(capas.length === 1) return capas[0].toGeoJSON().geometry;
+  return {type:'MultiPolygon',
+          coordinates: capas.map(l => l.toGeoJSON().geometry.coordinates)};
+}
+
+// ===================== eventos de dibujo =====================
+mapa.on(L.Draw.Event.CREATED, e => {
+  dibujado.clearLayers();           // un lote por vez
+  dibujado.addLayer(e.layer);
+  actualizar(geomDeDibujo());
+});
+mapa.on(L.Draw.Event.EDITED, () => actualizar(geomDeDibujo()));
+mapa.on(L.Draw.Event.DELETED, () => actualizar(geomDeDibujo()));
+
+// ===================== carga de archivos =====================
+function primeraGeometria(gj){
+  if(!gj) return null;
+  if(gj.type === 'FeatureCollection'){
+    const poligonos = gj.features
+      .map(f => f.geometry)
+      .filter(g => g && (g.type === 'Polygon' || g.type === 'MultiPolygon'));
+    if(!poligonos.length) return null;
+    if(poligonos.length === 1) return poligonos[0];
+    // varios polígonos: se unen como MultiPolygon
+    const coords = [];
+    poligonos.forEach(g => {
+      if(g.type === 'Polygon') coords.push(g.coordinates);
+      else g.coordinates.forEach(c => coords.push(c));
+    });
+    return {type:'MultiPolygon', coordinates: coords};
+  }
+  if(gj.type === 'Feature') return gj.geometry;
+  if(gj.type === 'Polygon' || gj.type === 'MultiPolygon') return gj;
+  return null;
+}
+
+document.getElementById('archivo').addEventListener('change', async ev => {
+  const file = ev.target.files[0];
+  if(!file) return;
+  const nombre = file.name.toLowerCase();
+  mostrarAviso('Leyendo <strong>' + file.name + '</strong>…');
+
+  try {
+    let gj = null;
+
+    if(nombre.endsWith('.geojson') || nombre.endsWith('.json')){
+      gj = JSON.parse(await file.text());
+
+    } else if(nombre.endsWith('.kml')){
+      const doc = new DOMParser().parseFromString(await file.text(), 'text/xml');
+      gj = toGeoJSON.kml(doc);
+
+    } else if(nombre.endsWith('.zip')){
+      gj = await shp(await file.arrayBuffer());
+      if(Array.isArray(gj)) gj = gj[0];
+
+    } else {
+      mostrarAviso('Formato no reconocido. Usá GeoJSON, KML o un ZIP con el shapefile completo.', 'error');
+      return;
+    }
+
+    const geom = primeraGeometria(gj);
+    if(!geom){
+      mostrarAviso('El archivo no contiene ningún polígono. ' +
+        'Si es un shapefile, el ZIP tiene que incluir los archivos .shp, .shx y .dbf juntos.', 'error');
+      return;
+    }
+    ponerEnMapa(geom);
+
+  } catch(err){
+    mostrarAviso('No se pudo leer el archivo: ' + err.message +
+      '<br>Si es un shapefile, revisá que el ZIP tenga .shp, .shx y .dbf.', 'error');
+  } finally {
+    ev.target.value = '';   // permite volver a elegir el mismo archivo
+  }
+});
+
+// ===================== botones =====================
+document.getElementById('btn-limpiar').addEventListener('click', () => {
+  dibujado.clearLayers();
+  actualizar(null);
+});
+
+document.getElementById('btn-copiar').addEventListener('click', async () => {
+  const texto = document.getElementById('salida').value;
+  const btn = document.getElementById('btn-copiar');
+  try {
+    await navigator.clipboard.writeText(texto);
+    btn.textContent = 'Copiado';
+    setTimeout(() => btn.textContent = 'Copiar al portapapeles', 1600);
+  } catch {
+    const ta = document.getElementById('salida');
+    ta.removeAttribute('readonly'); ta.select();
+    document.execCommand('copy');
+    ta.setAttribute('readonly','');
+    btn.textContent = 'Copiado';
+    setTimeout(() => btn.textContent = 'Copiar al portapapeles', 1600);
+  }
+});
+
+document.getElementById('btn-descargar').addEventListener('click', () => {
+  const blob = new Blob([document.getElementById('salida').value],
+                        {type:'application/geo+json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'lote.geojson';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// ===================== guardado en el repositorio =====================
+// El repositorio se deduce de la propia URL de GitHub Pages
+// (usuario.github.io/repo/), así que la página sigue funcionando si se
+// renombra el repo o se publica desde otra cuenta.
+const RAMA = 'main';
+const WORKFLOW = 'balance_hidrico.yml';
+
+// Detecta usuario/repositorio desde una URL de GitHub Pages
+// (usuario.github.io/repositorio/). Fuera de ahí no hay nada que deducir,
+// así que el campo queda vacío y lo completa la persona.
+function detectarRepo(){
+  if(!location.hostname.endsWith('github.io')) return '';
+  const usuario = location.hostname.split('.')[0];
+  const partes = location.pathname.split('/').filter(Boolean);
+  // Un sitio de usuario (usuario.github.io) vive en el repo usuario.github.io
+  const repo = partes.length ? partes[0] : location.hostname;
+  return usuario + '/' + repo;
+}
+
+function leerRepo(){
+  const v = (document.getElementById('f-repo').value || '').trim().replace(/^\/+|\/+$/g,'');
+  const partes = v.split('/');
+  if(partes.length !== 2 || !partes[0] || !partes[1]) return null;
+  return {propietario: partes[0], nombre: partes[1], rama: RAMA, workflow: WORKFLOW};
+}
+
+const API = 'https://api.github.com';
+const CLAVE_TOKEN = 'bh_token_github';
+
+// --- token: sessionStorage por defecto, localStorage solo si lo pide ---
+function leerToken(){
+  try { return localStorage.getItem(CLAVE_TOKEN) || sessionStorage.getItem(CLAVE_TOKEN) || ''; }
+  catch { return ''; }
+}
+function guardarToken(valor, recordar){
+  try {
+    sessionStorage.setItem(CLAVE_TOKEN, valor);
+    if(recordar) localStorage.setItem(CLAVE_TOKEN, valor);
+    else localStorage.removeItem(CLAVE_TOKEN);
+  } catch {}
+}
+function olvidarToken(){
+  try { localStorage.removeItem(CLAVE_TOKEN); sessionStorage.removeItem(CLAVE_TOKEN); } catch {}
+}
+
+// --- registro visible de lo que va pasando ---
+const registro = document.getElementById('registro');
+function anotar(texto, clase='info'){
+  registro.classList.add('visible');
+  const linea = document.createElement('div');
+  linea.className = 'l-' + clase;
+  linea.textContent = texto;
+  registro.appendChild(linea);
+  registro.scrollTop = registro.scrollHeight;
+}
+
+async function api(ruta, token, opciones = {}){
+  const r = await fetch(API + ruta, {
+    ...opciones,
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(opciones.body ? {'Content-Type':'application/json'} : {})
+    }
+  });
+  if(!r.ok){
+    let detalle = '';
+    try { detalle = (await r.json()).message || ''; } catch {}
+    const err = new Error(r.status + (detalle ? ' — ' + detalle : ''));
+    err.status = r.status;
+    throw err;
+  }
+  return r.status === 204 ? null : r.json();
+}
+
+// Un commit con los dos archivos a la vez, vía la API de árboles de Git.
+// Hacerlo en un solo commit evita quedar a mitad de camino si algo falla.
+async function commitearArchivos(token, repo, archivos, mensaje){
+  const base = `/repos/${repo.propietario}/${repo.nombre}`;
+
+  const ref = await api(`${base}/git/ref/heads/${repo.rama}`, token);
+  const commitBase = await api(`${base}/git/commits/${ref.object.sha}`, token);
+
+  const arbol = await api(`${base}/git/trees`, token, {
+    method: 'POST',
+    body: JSON.stringify({
+      base_tree: commitBase.tree.sha,
+      tree: archivos.map(a => ({
+        path: a.ruta, mode: '100644', type: 'blob', content: a.contenido
+      }))
+    })
+  });
+
+  const commit = await api(`${base}/git/commits`, token, {
+    method: 'POST',
+    body: JSON.stringify({ message: mensaje, tree: arbol.sha, parents: [ref.object.sha] })
+  });
+
+  await api(`${base}/git/refs/heads/${repo.rama}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({ sha: commit.sha })
+  });
+
+  return commit.sha;
+}
+
+async function dispararCorrida(token, repo, parametros){
+  await api(
+    `/repos/${repo.propietario}/${repo.nombre}/actions/workflows/${repo.workflow}/dispatches`,
+    token,
+    { method: 'POST', body: JSON.stringify({ ref: repo.rama, inputs: parametros }) }
+  );
+}
+
+function recolectarParametros(){
+  const v = id => document.getElementById(id).value.trim();
+  // Solo se mandan los campos con valor: los vacíos dejan que mande config.yaml
+  const p = {};
+  if(v('f-siembra')) p.fecha_siembra = v('f-siembra');
+  if(v('f-au')) p.au_inicial_mm = v('f-au');
+  if(v('f-raiz')) p.prof_raiz_inicial_cm = v('f-raiz');
+  if(v('f-umbral')) p.umbral_riego_pct = v('f-umbral');
+  if(v('f-nombre')) p.nombre_lote = v('f-nombre');
+  p.modo_aviso = v('f-modo') || '(usar config)';
+  p.reiniciar_estado = document.getElementById('f-reiniciar').checked ? 'true' : 'false';
+  p.enviar_resumen = document.getElementById('f-resumen').checked ? 'true' : 'false';
+  return p;
+}
+
+document.getElementById('btn-guardar').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-guardar');
+  const token = document.getElementById('f-token').value.trim();
+  const repo = leerRepo();
+
+  registro.innerHTML = '';
+  if(!repo){
+    anotar('Indicá el repositorio con el formato usuario/repositorio.', 'err');
+    return;
+  }
+  if(!token){
+    anotar('Falta el token de GitHub.', 'err');
+    return;
+  }
+  if(!geomActual){
+    anotar('No hay ningún lote definido. Dibujalo o cargalo en la pestaña «Lote».', 'err');
+    return;
+  }
+
+  btn.disabled = true;
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Guardando…';
+
+  try {
+    guardarToken(token, document.getElementById('f-recordar').checked);
+
+    anotar(`Repositorio: ${repo.propietario}/${repo.nombre}`);
+
+    const contenido = JSON.stringify(
+      {type:'Feature', properties:{nombre: document.getElementById('f-nombre').value.trim() || 'Lote'},
+       geometry: geomActual}, null, 2);
+
+    const ha = (areaPoligono(geomActual)/10000).toFixed(2);
+    anotar(`Escribiendo el lote (${ha} ha)…`);
+
+    const sha = await commitearArchivos(token, repo, [
+      {ruta: 'aoi/lote.geojson', contenido},
+      {ruta: 'docs/lote_actual.geojson', contenido}
+    ], `Lote actualizado desde la página (${ha} ha)`);
+
+    anotar('Commit ' + sha.slice(0,7) + ' creado.', 'ok');
+
+    const parametros = recolectarParametros();
+    const resumen = Object.entries(parametros)
+      .filter(([k,v]) => v && v !== '(usar config)' && v !== 'false')
+      .map(([k,v]) => `${k}=${v}`).join(', ');
+    anotar('Lanzando la corrida' + (resumen ? ' con ' + resumen : ' con la configuración guardada') + '…');
+
+    await dispararCorrida(token, repo, parametros);
+
+    anotar('Corrida lanzada.', 'ok');
+    anotar('Tarda unos minutos. Seguila en la pestaña Actions del repositorio.');
+    mostrarAviso('Guardado y en marcha. ' +
+      '<a href="https://github.com/' + repo.propietario + '/' + repo.nombre +
+      '/actions" target="_blank" rel="noopener">Ver la corrida en Actions →</a>', 'ok');
+
+  } catch(err){
+    if(err.status === 401){
+      anotar('Token rechazado (401). Revisá que esté bien copiado y que no haya vencido.', 'err');
+    } else if(err.status === 403 || err.status === 404){
+      anotar('Sin permiso (' + err.status + '). El token tiene que incluir este repositorio ' +
+             'con permisos de Contents y Actions en lectura y escritura.', 'err');
+    } else if(err.status === 409){
+      anotar('El repositorio cambió mientras se guardaba. Reintentá.', 'err');
+    } else {
+      anotar('Error: ' + err.message, 'err');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
+});
+
+document.getElementById('btn-olvidar').addEventListener('click', () => {
+  olvidarToken();
+  document.getElementById('f-token').value = '';
+  document.getElementById('f-recordar').checked = false;
+  anotar('Token borrado de este navegador.', 'ok');
+});
+
+// el nombre del lote escrito en el formulario se refleja en el encabezado
+document.getElementById('f-nombre').addEventListener('input', e => {
+  const v = e.target.value.trim();
+  if(v) document.getElementById('titulo-lote').textContent = v;
+});
+
+// precargar repositorio y token
+(function(){
+  const r = document.getElementById('f-repo');
+  try { r.value = localStorage.getItem('bh_repo') || detectarRepo(); }
+  catch { r.value = detectarRepo(); }
+  r.addEventListener('change', () => { try { localStorage.setItem('bh_repo', r.value.trim()); } catch {} });
+})();
+
+(function(){
+  const t = leerToken();
+  if(t){
+    document.getElementById('f-token').value = t;
+    try { if(localStorage.getItem(CLAVE_TOKEN)) document.getElementById('f-recordar').checked = true; } catch {}
+  }
+})();
+
+// ===================== lote actual como punto de partida =====================
+fetch('lote_actual.geojson', {cache:'no-store'})
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(gj => {
+    const geom = primeraGeometria(gj);
+    if(geom){
+      ponerEnMapa(geom);
+      mostrarAviso('Se cargó el lote que está en uso. Podés editarlo con la herramienta ' +
+        'de edición del mapa, o dibujar uno nuevo.', 'ok');
+    }
+  })
+  .catch(() => { /* sin lote previo: se arranca en blanco */ });
+
 </script>
 </body>
 </html>
