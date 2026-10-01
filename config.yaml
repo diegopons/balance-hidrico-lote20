@@ -51,7 +51,7 @@ cdse:
 # falta ponerlos acá.)
 cds:
   request_template:
-    version: "1_1"
+    version: "2_0"
     variable:
       - "precipitation_flux"
       - "reference_evapotranspiration"
