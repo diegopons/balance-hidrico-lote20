@@ -51,6 +51,11 @@ on:
         required: false
         type: boolean
         default: false
+      enviar_resumen:
+        description: "Enviar el resumen por Telegram aunque no haya días nuevos"
+        required: false
+        type: boolean
+        default: false
 
 # Permiso necesario para que el workflow pueda escribir en el repo
 # (guardar el CSV y el estado actualizados).
@@ -107,6 +112,7 @@ jobs:
           BH_NOMBRE_LOTE: ${{ inputs.nombre_lote }}
           BH_MODO_AVISO: ${{ inputs.modo_aviso == '(usar config)' && '' || inputs.modo_aviso }}
           BH_REINICIAR_ESTADO: ${{ inputs.reiniciar_estado }}
+          BH_ENVIAR_RESUMEN: ${{ inputs.enviar_resumen }}
         run: python -m src.main
 
       # ---------------------------------------------------------------
