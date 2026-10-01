@@ -37,6 +37,7 @@ from src.clima_agera5 import descargar_agera5
 from src.config import cargar_config
 from src.estado import (
     append_resultados_csv,
+    archivar_csv,
     cargar_estado,
     guardar_estado,
     huella_corrida,
@@ -170,13 +171,19 @@ def main(config_path: str = "config.yaml") -> int:
     # La huella ata el estado guardado al lote y a la fecha de siembra: si
     # cualquiera de los dos cambió, el balance acumulado no sirve y se reinicia.
     huella = huella_corrida(aoi_info["geojson"], cfg["campana"]["fecha_siembra"])
-    estado = cargar_estado(
+    estado, motivo_reinicio = cargar_estado(
         cfg["rutas"]["estado_json"],
         au_real_inicial=cfg["campana"]["au_real_inicial_mm"],
         prof_raiz_inicial=cfg["campana"]["prof_raiz_inicial_cm"],
         huella=huella,
         reiniciar=reiniciar_estado,
+        devolver_motivo=True,
     )
+
+    # Si el balance arranca de cero, la serie anterior corresponde a otro
+    # cálculo: se aparta para que no se mezcle con la nueva.
+    if motivo_reinicio:
+        archivar_csv(cfg["rutas"]["salida_csv"], motivo_reinicio)
     df_suelo = precalcular_parametros_suelo(cfg.get("suelo", SUELO_PROPIEDADES_DEFAULT))
 
     # 4. Definir rango de fechas nuevo

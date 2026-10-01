@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -40,17 +41,26 @@ def cargar_estado(
     prof_raiz_inicial: float,
     huella: str | None = None,
     reiniciar: bool = False,
-) -> EstadoBalance:
+    devolver_motivo: bool = False,
+):
     """Carga el estado previo, o arranca de cero.
 
     Arranca de cero cuando: no hay archivo, `reiniciar` es True, o la huella
     guardada no coincide con la actual (cambió el lote o la fecha de siembra).
+
+    Con devolver_motivo=True devuelve (estado, motivo), donde motivo es None
+    si se continuó, o un texto explicando por qué se reinició. Quien llame
+    necesita saberlo: un reinicio obliga a archivar el CSV anterior, porque
+    la serie vieja corresponde a otro cálculo y mezclarlas da una curva que
+    no existió nunca.
     """
+    motivo = None
     path_estado = Path(path_estado)
 
     if reiniciar and path_estado.exists():
         logger.warning("Se pidió reiniciar el estado: se descarta el balance acumulado.")
         path_estado.unlink()
+        motivo = "se pidió reiniciar"
 
     if path_estado.exists():
         with open(path_estado, "r", encoding="utf-8") as f:
@@ -64,20 +74,24 @@ def cargar_estado(
                 huella_guardada,
                 huella,
             )
+            motivo = "cambió el lote o la fecha de siembra"
         elif huella is not None and huella_guardada is None:
             logger.info("Estado previo sin huella; se adopta la actual y se continúa.")
             logger.info("Estado previo cargado: %s", data)
-            return EstadoBalance.from_dict(data)
+            est = EstadoBalance.from_dict(data)
+            return (est, None) if devolver_motivo else est
         else:
             logger.info("Estado previo cargado: %s", data)
-            return EstadoBalance.from_dict(data)
+            est = EstadoBalance.from_dict(data)
+            return (est, None) if devolver_motivo else est
 
     logger.info(
         "Se inicializa el balance: AU=%.1f mm, profundidad de raíz=%.0f cm.",
         au_real_inicial,
         prof_raiz_inicial,
     )
-    return EstadoBalance.inicial(au_real_inicial, prof_raiz_inicial)
+    est = EstadoBalance.inicial(au_real_inicial, prof_raiz_inicial)
+    return (est, motivo) if devolver_motivo else est
 
 
 def guardar_estado(
@@ -90,6 +104,35 @@ def guardar_estado(
         data["huella"] = huella
     with open(path_estado, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False, default=str)
+
+
+def archivar_csv(path_csv: str | Path, motivo: str = "") -> Path | None:
+    """Aparta el CSV anterior en lugar de borrarlo.
+
+    Se llama cuando el balance se reinicia. Si se dejara el CSV, las filas
+    viejas (calculadas con otro lote u otra fecha de siembra) se mezclarían
+    con las nuevas y el tablero mostraría una serie continua que nunca
+    existió. El archivo se conserva con fecha por si hace falta consultarlo.
+    """
+    path_csv = Path(path_csv)
+    if not path_csv.exists():
+        return None
+
+    sello = datetime.now().strftime("%Y%m%d-%H%M%S")
+    destino = path_csv.with_name(f"{path_csv.stem}_hasta_{sello}{path_csv.suffix}")
+    # Dos archivados dentro del mismo segundo darían el mismo nombre y el
+    # segundo pisaría al primero sin avisar.
+    n = 2
+    while destino.exists():
+        destino = path_csv.with_name(f"{path_csv.stem}_hasta_{sello}-{n}{path_csv.suffix}")
+        n += 1
+    path_csv.rename(destino)
+    logger.warning(
+        "Serie anterior archivada como %s (%s). Se empieza una serie nueva.",
+        destino.name,
+        motivo or "reinicio del balance",
+    )
+    return destino
 
 
 def append_resultados_csv(path_csv: str | Path, df_nuevos: pd.DataFrame) -> None:
