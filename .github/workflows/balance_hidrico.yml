@@ -28,6 +28,14 @@ on:
         description: "Profundidad de raíz inicial, en cm"
         required: false
         type: string
+      fecha_fin:
+        description: "Calcular hasta esta fecha (AAAA-MM-DD). Vacío = hasta donde haya datos"
+        required: false
+        type: string
+      rezago_clima:
+        description: "Días de rezago de AgERA5 (por defecto 10)"
+        required: false
+        type: string
       umbral_riego_pct:
         description: "Umbral de riego, en % de agua útil"
         required: false
@@ -108,6 +116,8 @@ jobs:
           BH_FECHA_SIEMBRA: ${{ inputs.fecha_siembra }}
           BH_AU_INICIAL_MM: ${{ inputs.au_inicial_mm }}
           BH_PROF_RAIZ_INICIAL_CM: ${{ inputs.prof_raiz_inicial_cm }}
+          BH_FECHA_FIN: ${{ inputs.fecha_fin }}
+          BH_REZAGO_CLIMA: ${{ inputs.rezago_clima }}
           BH_UMBRAL_RIEGO_PCT: ${{ inputs.umbral_riego_pct }}
           BH_NOMBRE_LOTE: ${{ inputs.nombre_lote }}
           BH_MODO_AVISO: ${{ inputs.modo_aviso == '(usar config)' && '' || inputs.modo_aviso }}
