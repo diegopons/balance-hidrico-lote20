@@ -9,3 +9,4 @@ PyYAML>=6.0
 cdsapi>=0.7
 xarray>=2023.1
 netCDF4>=1.6
+Pillow>=10.0        # mosaico de imágenes NDVI

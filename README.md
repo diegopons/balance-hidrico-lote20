@@ -8,6 +8,8 @@ fuente de datos:
 | Variable                 | Antes (notebook)        | Ahora                                                        |
 |---------------------------|--------------------------|--------------------------------------------------------------|
 | NDVI                      | GEE (S2+L8+L9+MODIS)     | **Copernicus Data Space Ecosystem** (Sentinel-2 L2A, Statistical API) |
+| Días sin imagen           | se repetía el último valor | se interpola entre observaciones reales                      |
+| Manejo del lote           | archivo fijo             | mapa en la página web, con guardado y ejecución desde ahí     |
 | Precipitación y ETo       | GEE (ERA5-Land)          | **Copernicus Climate Data Store** (AgERA5)                    |
 | AOI                       | subida manual cada vez   | shapefile `aoi/lote_20.shp` fijo en el proyecto               |
 
@@ -25,10 +27,11 @@ balance_hidrico_periodico/
 ├── requirements.txt
 ├── run_balance_hidrico.bat                    # para Task Scheduler
 ├── src/
-│   ├── aoi.py            # carga del shapefile
+│   ├── aoi.py            # carga del lote (GeoJSON o shapefile)
 │   ├── suelo.py          # parámetros de suelo (de BH p-Pons.xlsx)
 │   ├── balance.py         # fórmulas del balance (Kc, Ks, modelo diario)
 │   ├── ndvi_sentinelhub.py# NDVI vía Copernicus Data Space Ecosystem
+│   ├── mapas_ndvi.py      # mosaico de imágenes NDVI del lote
 │   ├── clima_agera5.py    # precipitación + ETo vía CDS / AgERA5
 │   ├── estado.py          # estado.json + CSV histórico
 │   ├── auth_cdse.py       # login OAuth2 en CDSE
@@ -123,6 +126,29 @@ Cada corrida:
   `data/balance_hidrico_lote20.csv` y `data/estado.json`, y si el % de Agua
   Útil quedó por debajo del umbral, deja una alerta bien visible en el log.
 
+## 6b. Cómo se trata el NDVI
+
+Sentinel-2 pasa cada cinco días y las nubes agrandan los huecos, así que la
+mayoría de los días no tiene imagen propia. El sistema hace tres cosas:
+
+1. **Enmascara por píxel** con la banda SCL de Sentinel-2 L2A: descarta
+   nubes, sombras de nube, cirros y nieve dentro del lote.
+2. **Descarta la fecha entera** si menos del 70 % del lote quedó con píxeles
+   válidos (`cdse.min_pixeles_validos_pct`). Con menos que eso el promedio
+   describe la parte despejada, no el lote.
+3. **Interpola linealmente** entre fechas con observación real. Antes se
+   arrastraba el último valor, lo que convertía la curva en una escalera:
+   durante el crecimiento subestimaba el NDVI y en senescencia lo
+   sobreestimaba, y el Kc heredaba ese error.
+
+El filtro de nubosidad de la escena completa está en 90 %
+(`cdse.max_cloud_coverage`) a propósito: el enmascarado real lo hace el paso
+1, píxel a píxel, así que un umbral bajo solo descartaría pasadas en las que
+el lote podía estar despejado.
+
+Los días posteriores a la última imagen no se pueden interpolar: se sostiene
+el último valor y el log dice cuántos son.
+
 ## 7. Notas y limitaciones a tener en cuenta
 
 - El AOI (`aoi/lote_20.shp`) descargado de Drive para armar este proyecto
@@ -134,10 +160,10 @@ Cada corrida:
   representativo de la zona, no hiperlocal. Si más adelante se quiere mayor
   detalle espacial de lluvia, se puede sumar una fuente pluviométrica local
   (estación propia / IoT) como capa adicional en `df_clima`.
-- Sentinel-2 no pasa todos los días (revisit ~5 días) y puede haber nubes:
-  los días sin dato válido se completan arrastrando el último NDVI
-  conocido (`ultimo_ndvi_valido` en el estado), igual que el `ffill` del
-  notebook original.
+- Sentinel-2 no pasa todos los días (revisit ~5 días) y puede haber nubes.
+  Ver la sección 6b sobre cómo se completan esos huecos. En un lote chico el
+  problema se agrava: 2 ha son unos 200 píxeles, así que una nube pequeña
+  tapa una fracción grande del lote.
 - Los riegos reales (si se aplican) hoy quedan en 0 por defecto
   (`df_dias["riego_mm"] = 0.0` en `main.py`); si se registran en campo,
   ese es el lugar para cargarlos antes de correr el balance.

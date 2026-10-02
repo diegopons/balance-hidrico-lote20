@@ -281,7 +281,7 @@
     <!-- ====== VIGOR ====== -->
     <section>
       <h2>Vigor del cultivo</h2>
-      <p class="subtitulo">NDVI de Sentinel-2. Los días sin pasada o con nubes repiten el último valor válido</p>
+      <p class="subtitulo">NDVI de Sentinel-2. Los días sin pasada o con nubes se interpolan entre observaciones</p>
       <div class="panel">
         <div id="ndvi"></div>
       </div>
@@ -338,6 +338,18 @@
               <button id="btn-descargar" disabled>Descargar lote.geojson</button>
             </div>
           </details>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:24px">
+        <h2>Evolución del NDVI</h2>
+        <p class="subtitulo">Una imagen por fecha con pasada útil, de la más antigua a la más reciente</p>
+        <div id="mosaico-caja">
+          <img id="mosaico" alt="Mosaico de imágenes NDVI del lote"
+               style="width:100%;max-width:960px;border:1px solid var(--linea);display:none">
+          <div id="mosaico-vacio" class="aviso">
+            Todavía no hay imágenes. Se generan en cada corrida del sistema.
+          </div>
         </div>
       </div>
   </section>
@@ -1266,6 +1278,19 @@ document.getElementById('f-nombre').addEventListener('input', e => {
     document.getElementById('f-token').value = t;
     try { if(localStorage.getItem(CLAVE_TOKEN)) document.getElementById('f-recordar').checked = true; } catch {}
   }
+})();
+
+// ===================== mosaico de NDVI =====================
+// Se pide con un parámetro de tiempo para saltear el caché del navegador:
+// la imagen cambia en cada corrida pero conserva el mismo nombre.
+(function(){
+  const img = document.getElementById('mosaico');
+  const vacio = document.getElementById('mosaico-vacio');
+  if(!img) return;
+  const url = 'ndvi_mosaico.png?t=' + Date.now();
+  img.onload = () => { img.style.display = 'block'; vacio.style.display = 'none'; };
+  img.onerror = () => { img.style.display = 'none'; vacio.style.display = 'block'; };
+  img.src = url;
 })();
 
 // ===================== lote actual como punto de partida =====================

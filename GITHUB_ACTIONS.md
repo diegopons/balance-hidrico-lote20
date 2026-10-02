@@ -115,6 +115,32 @@ Un par de cosas a saber del `schedule` de GitHub:
 
 ---
 
+## El formulario de "Run workflow"
+
+Al hacer clic en **Run workflow** aparece un formulario con estos campos.
+Los que dejes vacíos usan lo que diga `config.yaml`.
+
+| Campo | Para qué |
+|---|---|
+| `fecha_siembra` | Desde cuándo calcular el balance |
+| `au_inicial_mm` | Agua útil estimada a la siembra |
+| `prof_raiz_inicial_cm` | Profundidad de raíz inicial |
+| `fecha_fin` | Hasta qué día calcular |
+| `rezago_clima` | Días de atraso de AgERA5 (por defecto 10) |
+| `umbral_riego_pct` | % que dispara la alerta |
+| `nombre_lote` | Nombre en el aviso de Telegram |
+| `modo_aviso` | Cuándo notificar |
+| `reiniciar_estado` | Descarta lo acumulado y recalcula |
+| `enviar_resumen` | Manda el resumen aunque no haya días nuevos |
+
+Lo mismo se puede hacer, más cómodo, desde la pestaña «Parámetros y
+ejecución» de la página web (ver TABLERO.md).
+
+> **Importante**: no uses el botón **Re-run** de una corrida anterior. Un
+> re-run repite la corrida original con el código y la configuración de
+> aquel momento, no con los actuales. Para una corrida nueva, entrá al
+> workflow y usá **Run workflow**.
+
 ## Errores comunes
 
 **`Faltan variables de entorno CDSE_CLIENT_ID / CDSE_CLIENT_SECRET`**
@@ -134,6 +160,11 @@ y aceptá "Terms of use". Es por única vez.
 Nuestro `aoi.py` puede trabajar sin geopandas (usa `pyshp` como respaldo).
 Si diera problemas en el runner, se puede comentar la línea `geopandas` de
 `requirements.txt` y el script sigue funcionando igual.
+
+**Cambié el código pero los resultados son los mismos**
+El código nuevo no recalcula lo ya calculado. Hay que volver a ejecutar, y
+si el estado dice que ya se procesó hasta cierta fecha, tildar
+`reiniciar_estado` para que rehaga la campaña.
 
 **La corrida termina en verde pero no aparece nada nuevo en el CSV**
 Es lo normal y esperable la mayoría de los días: por el rezago de AgERA5

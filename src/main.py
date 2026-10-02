@@ -42,6 +42,7 @@ from src.estado import (
     guardar_estado,
     huella_corrida,
 )
+from src.mapas_ndvi import generar_mosaico
 from src.ndvi_sentinelhub import obtener_serie_ndvi, rellenar_ndvi
 from src.notificaciones import armar_mensaje, debe_notificar, enviar_telegram
 from src.suelo import SUELO_PROPIEDADES_DEFAULT, precalcular_parametros_suelo
@@ -258,6 +259,11 @@ def main(config_path: str = "config.yaml") -> int:
         "NDVI: %d fechas con imagen utilizable en el rango.",
         df_ndvi["ndvi"].notna().sum(),
     )
+    # Fechas con observación real: son las que valen para el mosaico
+    fechas_con_imagen = [
+        d.strftime("%Y-%m-%d")
+        for d in df_ndvi.loc[df_ndvi["ndvi"].notna(), "fecha"].sort_values()
+    ]
 
     # 6. Clima (Copernicus Climate Data Store / AgERA5)
     log.info("Descargando precipitación y ETo (CDS / AgERA5)...")
@@ -341,7 +347,26 @@ def main(config_path: str = "config.yaml") -> int:
     append_resultados_csv(cfg["rutas"]["salida_csv"], df_resultados)
     guardar_estado(cfg["rutas"]["estado_json"], estado_nuevo, huella=huella)
 
-    # 10. Notificación de estado / alerta de riego
+    # 10. Mosaico de imágenes NDVI (si está habilitado)
+    cfg_mapas = cfg.get("mapas", {})
+    if cfg_mapas.get("habilitado", True) and fechas_con_imagen:
+        try:
+            generar_mosaico(
+                cdse_client_id,
+                cdse_client_secret,
+                aoi_info["geojson"],
+                fechas_con_imagen,
+                destino=cfg_mapas.get("salida", "docs/ndvi_mosaico.png"),
+                columnas=cfg_mapas.get("columnas", 4),
+                lado_px=cfg_mapas.get("lado_px", 220),
+                titulo=f"NDVI — {cfg.get('telegram', {}).get('nombre_lote', 'Lote')}",
+            )
+        except Exception as e:  # noqa: BLE001
+            # Un fallo acá no debe tumbar la corrida: el balance ya está calculado
+            # y guardado, y el mosaico es información complementaria.
+            log.warning("No se pudo generar el mosaico de NDVI: %s", e)
+
+    # 11. Notificación de estado / alerta de riego
     if not df_resultados.empty:
         ultimo = df_resultados.iloc[-1]
         fecha_ultimo = (

@@ -75,6 +75,18 @@ cds:
     format: "zip"
 
 # ---------------------------------------------------------------------------
+# Mosaico de imágenes NDVI
+# ---------------------------------------------------------------------------
+# Cada corrida arma un PNG con una miniatura por fecha con pasada útil, para
+# ver la evolución espacial del lote. Se guarda en docs/ y lo muestra la
+# página. Poner habilitado: false si no se quiere (ahorra ~15 s por corrida).
+mapas:
+  habilitado: true
+  salida: "docs/ndvi_mosaico.png"
+  columnas: 4          # 4 columnas x 2 filas = las últimas 8 fechas
+  lado_px: 220
+
+# ---------------------------------------------------------------------------
 # Notificaciones por Telegram
 # ---------------------------------------------------------------------------
 # Credenciales por variable de entorno (o Secrets de GitHub):
