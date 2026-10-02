@@ -12,9 +12,24 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 
-from .suelo import obtener_au_max_para_profundidad
+from .suelo import obtener_au_max_para_profundidad, agua_de_capas_alcanzadas
+
+
+def precipitacion_efectiva(pp_mm: float, umbral_mm: float = 15.0) -> float:
+    """Fracción de la lluvia que queda en el perfil.
+
+    Misma fórmula que la planilla BH p-Pons: por debajo del umbral entra todo,
+    y por encima se descuenta escurrimiento con 2,43 · Pp^0,667 (USDA-SCS).
+    Con `umbral_mm` muy alto equivale a usar la lluvia caída completa.
+    """
+    if pp_mm <= 0:
+        return 0.0
+    if pp_mm < umbral_mm:
+        return float(pp_mm)
+    return float(2.43 * (pp_mm ** 0.667))
 
 
 def calcular_kc_desde_ndvi(ndvi: float, a: float = 1.77, b: float = -0.198) -> float:
@@ -64,6 +79,10 @@ def procesar_dias_nuevos(
     prof_raiz_max_cm: float = 200.0,
     kc_a: float = 1.77,
     kc_b: float = -0.198,
+    recarga_por_capa: bool = True,
+    umbral_lluvia_efectiva_mm: float = 15.0,
+    tabla_prof_raiz: Optional[list] = None,
+    fecha_siembra: Optional[str] = None,
 ) -> tuple[pd.DataFrame, EstadoBalance]:
     """Corre el balance hídrico día a día sobre `datos_nuevos` (columnas:
     fecha, precipitacion_mm, eto_mm, ndvi, riego_mm) partiendo del `estado`
@@ -80,10 +99,31 @@ def procesar_dias_nuevos(
 
     datos_nuevos = datos_nuevos.sort_values("fecha").reset_index(drop=True)
 
+    usar_tabla = bool(tabla_prof_raiz) and fecha_siembra is not None
+    if usar_tabla:
+        siembra = pd.to_datetime(fecha_siembra)
+        dds_tabla = [float(p[0]) for p in tabla_prof_raiz]
+        cm_tabla = [float(p[1]) for p in tabla_prof_raiz]
+
     for _, dia in datos_nuevos.iterrows():
-        prof_raiz_actual = min(prof_raiz_actual + incremento_raiz_diario_cm, prof_raiz_max_cm)
+        prof_raiz_previa = prof_raiz_actual
+        if usar_tabla:
+            dds = (pd.to_datetime(dia["fecha"]) - siembra).days
+            prof_raiz_actual = float(np.interp(dds, dds_tabla, cm_tabla))
+        else:
+            prof_raiz_actual = prof_raiz_actual + incremento_raiz_diario_cm
+        prof_raiz_actual = max(prof_raiz_previa, min(prof_raiz_actual, prof_raiz_max_cm))
         au_max_dia = obtener_au_max_para_profundidad(prof_raiz_actual, df_suelo)
-        au_real_ayer = min(au_real_ayer, au_max_dia)
+
+        # Al alcanzar una capa nueva, el cultivo accede al agua que ya estaba
+        # almacenada ahí. Sin esto el lote aparece cada vez más seco a medida
+        # que la raíz profundiza, que era el desvío principal contra la planilla.
+        recarga_mm = (
+            agua_de_capas_alcanzadas(prof_raiz_previa, prof_raiz_actual, df_suelo)
+            if recarga_por_capa
+            else 0.0
+        )
+        au_real_ayer = min(au_real_ayer + recarga_mm, au_max_dia)
         pct_au_inicial = (au_real_ayer / au_max_dia) * 100 if au_max_dia > 0 else 0
 
         ndvi_dia = dia["ndvi"]
@@ -101,8 +141,9 @@ def procesar_dias_nuevos(
         etc_ajustada = etc * ks
 
         precipitacion = dia["precipitacion_mm"] if not pd.isna(dia["precipitacion_mm"]) else 0.0
+        precipitacion_ef = precipitacion_efectiva(precipitacion, umbral_lluvia_efectiva_mm)
         riego = dia.get("riego_mm", 0.0) or 0.0
-        ingresos_agua = precipitacion + riego
+        ingresos_agua = precipitacion_ef + riego
         au_real_hoy = au_real_ayer - etc_ajustada + ingresos_agua
 
         percolacion_profunda = max(0.0, au_real_hoy - au_max_dia)
@@ -114,6 +155,8 @@ def procesar_dias_nuevos(
             {
                 "fecha": dia["fecha"],
                 "precipitacion_mm": round(precipitacion, 2),
+                "precipitacion_efectiva_mm": round(precipitacion_ef, 2),
+                "recarga_capa_mm": round(recarga_mm, 2),
                 "eto_mm": round(eto, 2),
                 "ndvi": round(ndvi_dia, 3),
                 "prof_raiz_cm": round(prof_raiz_actual, 1),

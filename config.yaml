@@ -19,6 +19,37 @@ balance:
   kc_a: 1.77
   kc_b: -0.198
 
+  # Al profundizar, la raíz alcanza agua que ya estaba almacenada en la capa
+  # nueva. Sin esto el lote aparece cada vez más seco a medida que crece el
+  # cultivo (era el desvío principal contra la planilla BH p-Pons).
+  recarga_por_capa: true
+
+  # Cuánta agua útil se supone que tiene cada capa al momento de la siembra,
+  # como % de su agua útil máxima. Es una suposición: si hay calicata, cargar
+  # `agua_inicial_mm` por capa en la sección `suelo` y este valor se ignora.
+  llenado_inicial_pct: 70
+
+  # Lluvias de este tamaño o mayores se descuentan por escurrimiento con
+  # 2,43 · Pp^0,667 (USDA-SCS), igual que la planilla. Para usar la lluvia
+  # caída completa, poner un número muy alto (por ejemplo 9999).
+  umbral_lluvia_efectiva_mm: 15
+
+  # Profundización de la raíz. Si se define esta tabla (días desde siembra,
+  # profundidad en cm) se interpola entre los puntos y se ignora
+  # `incremento_raiz_diario_cm`. Los valores de abajo son los de la planilla
+  # BH p-Pons para trigo: arranque lento y profundización rápida después.
+  # Comentar la tabla para volver al crecimiento lineal.
+  prof_raiz_por_dds:
+    - [0, 1]
+    - [42, 40]
+    - [52, 60]
+    - [61, 80]
+    - [69, 100]
+    - [77, 120]
+    - [84, 140]
+    - [91, 160]
+    - [99, 200]
+
 # Cuántos días de "colchón" se dejan antes de hoy al pedir datos nuevos.
 # Sentinel-2 en CDSE está casi en tiempo real (1-2 días); AgERA5 (CDS) suele
 # tener un rezago de ~7-10 días hasta la versión "final". Se usa el mayor de

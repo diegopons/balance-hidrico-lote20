@@ -186,7 +186,10 @@ def main(config_path: str = "config.yaml") -> int:
     # cálculo: se aparta para que no se mezcle con la nueva.
     if motivo_reinicio:
         archivar_csv(cfg["rutas"]["salida_csv"], motivo_reinicio)
-    df_suelo = precalcular_parametros_suelo(cfg.get("suelo", SUELO_PROPIEDADES_DEFAULT))
+    df_suelo = precalcular_parametros_suelo(
+        cfg.get("suelo", SUELO_PROPIEDADES_DEFAULT),
+        llenado_inicial_pct=cfg["balance"].get("llenado_inicial_pct", 70.0),
+    )
 
     # 4. Definir rango de fechas nuevo
     if estado.ultima_fecha_procesada:
@@ -341,6 +344,10 @@ def main(config_path: str = "config.yaml") -> int:
         prof_raiz_max_cm=cfg["balance"]["prof_raiz_max_cm"],
         kc_a=cfg["balance"]["kc_a"],
         kc_b=cfg["balance"]["kc_b"],
+        recarga_por_capa=cfg["balance"].get("recarga_por_capa", True),
+        umbral_lluvia_efectiva_mm=cfg["balance"].get("umbral_lluvia_efectiva_mm", 15.0),
+        tabla_prof_raiz=cfg["balance"].get("prof_raiz_por_dds"),
+        fecha_siembra=cfg["campana"]["fecha_siembra"],
     )
 
     # 9. Guardar CSV histórico y estado
