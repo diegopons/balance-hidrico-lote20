@@ -364,6 +364,11 @@
         <input type="number" id="f-raiz" step="1" min="0" placeholder="10">
       </div>
       <div class="campo">
+        <label for="f-fin">Calcular hasta</label>
+        <input type="date" id="f-fin">
+        <span class="pista">Vacío = hasta donde lleguen los datos. AgERA5 publica con unos 10 días de atraso</span>
+      </div>
+      <div class="campo">
         <label for="f-umbral">Umbral de riego (% de agua útil)</label>
         <input type="number" id="f-umbral" step="1" min="0" max="100" placeholder="50">
         <span class="pista">Por debajo de este valor se dispara la alerta</span>
@@ -385,6 +390,13 @@
     </div>
 
     <label class="casilla" style="margin-top:18px">
+      <input type="checkbox" id="f-hasta-hoy">
+      <span>Calcular hasta hoy.
+        <span style="color:var(--tinta-suave)">Pide hasta la fecha de ejecución. Los días
+        que AgERA5 todavía no publicó quedan fuera y se incorporan en la corrida siguiente.</span></span>
+    </label>
+
+    <label class="casilla" style="margin-top:12px">
       <input type="checkbox" id="f-resumen">
       <span>Enviar el resumen por Telegram al terminar.
         <span style="color:var(--tinta-suave)">Aunque no haya días nuevos y aunque el
@@ -435,9 +447,9 @@
     <div class="registro" id="registro"></div>
 
     <div class="aviso" style="margin-top:16px">
-      Cambiar el lote invalida el balance acumulado del anterior: el agua útil, la profundidad
-      de raíz y la serie histórica corresponden a otra superficie. El sistema lo detecta por su
-      cuenta y empieza de cero, pero la serie previa queda en el CSV y no se borra.
+      Cambiar el lote o la fecha de siembra invalida el balance acumulado: el agua útil, la
+      profundidad de raíz y la serie corresponden a otro cálculo. El sistema lo detecta solo,
+      aparta la serie anterior en un archivo con fecha (no se pierde) y empieza una nueva.
     </div>
   </div>
 
@@ -1142,10 +1154,15 @@ function recolectarParametros(){
   if(v('f-au')) p.au_inicial_mm = v('f-au');
   if(v('f-raiz')) p.prof_raiz_inicial_cm = v('f-raiz');
   if(v('f-umbral')) p.umbral_riego_pct = v('f-umbral');
+  if(v('f-fin')) p.fecha_fin = v('f-fin');
   if(v('f-nombre')) p.nombre_lote = v('f-nombre');
   p.modo_aviso = v('f-modo') || '(usar config)';
   p.reiniciar_estado = document.getElementById('f-reiniciar').checked ? 'true' : 'false';
   p.enviar_resumen = document.getElementById('f-resumen').checked ? 'true' : 'false';
+  // "hasta hoy" tiene prioridad sobre la fecha escrita a mano
+  if(document.getElementById('f-hasta-hoy').checked){
+    p.fecha_fin = new Date().toISOString().slice(0,10);
+  }
   return p;
 }
 

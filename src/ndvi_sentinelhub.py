@@ -67,8 +67,9 @@ def obtener_serie_ndvi(
     fecha_fin: str,
     max_cloud_coverage: int = 60,
     resolucion_m: int = 10,
+    min_pixeles_validos_pct: float = 70.0,
 ) -> pd.DataFrame:
-    """Devuelve un DataFrame diario (fecha, ndvi) para el rango solicitado.
+    """Devuelve un DataFrame diario (fecha, ndvi, cobertura_pct) del rango.
 
     Los días sin pasada de Sentinel-2 (o completamente nublados) quedan con
     ndvi = NaN; el arrastre (ffill) se resuelve más adelante, en el módulo de
@@ -124,17 +125,108 @@ def obtener_serie_ndvi(
             continue
         sample_count = stats.get("sampleCount", 0)
         nodata_count = stats.get("noDataCount", 0)
-        if sample_count - nodata_count <= 0:
-            ndvi_val = None  # día sin píxeles válidos (100% nublado, sin pasada, etc.)
+        validos = sample_count - nodata_count
+        cobertura = (validos / sample_count * 100) if sample_count else 0.0
+
+        # Un día con la mitad del lote tapado por una nube da un promedio que
+        # describe la otra mitad, no el lote. Mejor descartarlo y dejar que la
+        # interpolación cubra el hueco que meter un valor sesgado en la serie.
+        if validos <= 0 or cobertura < min_pixeles_validos_pct:
+            if validos > 0:
+                logger.info(
+                    "  %s descartado: solo %.0f%% del lote con píxeles válidos.",
+                    fecha_str, cobertura,
+                )
+            ndvi_val = None
         else:
             ndvi_val = stats.get("mean")
-        filas.append({"fecha": fecha_str, "ndvi": ndvi_val})
+        filas.append({"fecha": fecha_str, "ndvi": ndvi_val, "cobertura_pct": round(cobertura, 1)})
 
     df = pd.DataFrame(filas)
     if df.empty:
-        df = pd.DataFrame(columns=["fecha", "ndvi"])
+        df = pd.DataFrame(columns=["fecha", "ndvi", "cobertura_pct"])
     df["fecha"] = pd.to_datetime(df["fecha"])
     return df
+
+
+def rellenar_ndvi(
+    df_dias: pd.DataFrame,
+    ndvi_previo: float | None = None,
+    max_dias_interpolar: int = 30,
+) -> tuple[pd.DataFrame, dict]:
+    """Completa los días sin imagen interpolando entre observaciones.
+
+    Sentinel-2 pasa cada cinco días y las nubes agrandan los huecos, así que
+    la mayoría de los días no tiene dato propio. Arrastrar el último valor
+    (lo que hacíamos antes) convierte la curva en una escalera: durante el
+    crecimiento subestima el NDVI, y en senescencia lo sobreestima, y el Kc
+    hereda ese error.
+
+    Interpolar linealmente entre dos fechas con imagen es una aproximación
+    mucho más razonable, porque el canopeo cambia de forma gradual.
+
+    Qué hace con los extremos:
+      - Días anteriores a la primera observación: usa `ndvi_previo` (el
+        último valor conocido de la corrida anterior) si existe; si no,
+        repite hacia atrás la primera observación.
+      - Días posteriores a la última observación: repite el último valor.
+        No hay forma de hacer otra cosa, pero se informa cuántos son.
+
+    Devuelve el DataFrame con 'ndvi' completo y un resumen para el log.
+    """
+    df = df_dias.sort_values("fecha").reset_index(drop=True).copy()
+    serie = df["ndvi"]
+    observados = int(serie.notna().sum())
+
+    resumen = {
+        "observados": observados,
+        "total": len(df),
+        "interpolados": 0,
+        "arrastrados_al_final": 0,
+        "hueco_mayor": 0,
+    }
+
+    if observados == 0:
+        # Sin ninguna imagen en el tramo: queda lo que haya del estado previo
+        if ndvi_previo is not None:
+            df["ndvi"] = ndvi_previo
+            resumen["arrastrados_al_final"] = len(df)
+        return df, resumen
+
+    primero = serie.first_valid_index()
+    ultimo = serie.last_valid_index()
+
+    # hueco más largo entre observaciones, para saber cuánto estamos suponiendo
+    fechas_obs = df.loc[serie.notna(), "fecha"]
+    if len(fechas_obs) > 1:
+        resumen["hueco_mayor"] = int(fechas_obs.diff().dt.days.max())
+
+    # tramo central: interpolación lineal sobre el tiempo
+    df["ndvi"] = serie.interpolate(method="linear", limit_area="inside")
+
+    # antes de la primera imagen
+    if primero > 0:
+        if ndvi_previo is not None:
+            # se une linealmente el último valor conocido con la primera imagen
+            df.loc[:primero, "ndvi"] = pd.Series(
+                [ndvi_previo] + [None] * (primero - 1) + [serie[primero]]
+            ).interpolate().values
+        else:
+            df.loc[:primero, "ndvi"] = serie[primero]
+
+    # después de la última imagen: no queda más que sostener el valor
+    if ultimo < len(df) - 1:
+        df.loc[ultimo:, "ndvi"] = serie[ultimo]
+        resumen["arrastrados_al_final"] = len(df) - 1 - ultimo
+
+    resumen["interpolados"] = int(df["ndvi"].notna().sum()) - observados
+    if resumen["hueco_mayor"] > max_dias_interpolar:
+        logger.warning(
+            "El hueco más largo sin imagen es de %d días: la interpolación en "
+            "ese tramo es una suposición amplia.",
+            resumen["hueco_mayor"],
+        )
+    return df, resumen
 
 
 if __name__ == "__main__":

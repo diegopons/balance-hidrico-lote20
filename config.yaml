@@ -40,8 +40,22 @@ rutas:
 #   CDSE_CLIENT_SECRET
 # Crearlas en: https://shapps.dataspace.copernicus.eu/dashboard/
 cdse:
-  max_cloud_coverage: 60
+  # Filtro de nube de la ESCENA completa (la imagen entera, no el lote).
+  # El enmascarado real se hace píxel a píxel con la banda SCL dentro del
+  # evalscript, así que un umbral bajo acá solo descarta pasadas en las que
+  # el lote podía estar despejado. 90 deja entrar casi todo y deja que el
+  # filtro por píxel y el de cobertura decidan.
+  max_cloud_coverage: 90
   resolucion_m: 10
+
+  # Porcentaje mínimo del lote con píxeles válidos para aceptar una fecha.
+  # Con menos que esto, el promedio describe la parte despejada y no el lote:
+  # conviene descartar la fecha y dejar que la interpolación cubra el hueco.
+  min_pixeles_validos_pct: 70
+
+  # Si el hueco entre dos imágenes supera estos días, se interpola igual
+  # pero queda un aviso en el log: en ese tramo la curva es una suposición.
+  max_dias_interpolar: 30
 
 # ---------------------------------------------------------------------------
 # Copernicus Climate Data Store (precipitación + ETo vía AgERA5)

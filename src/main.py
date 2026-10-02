@@ -42,7 +42,7 @@ from src.estado import (
     guardar_estado,
     huella_corrida,
 )
-from src.ndvi_sentinelhub import obtener_serie_ndvi
+from src.ndvi_sentinelhub import obtener_serie_ndvi, rellenar_ndvi
 from src.notificaciones import armar_mensaje, debe_notificar, enviar_telegram
 from src.suelo import SUELO_PROPIEDADES_DEFAULT, precalcular_parametros_suelo
 
@@ -66,6 +66,7 @@ def aplicar_parametros_de_entorno(cfg: dict, log) -> dict:
         ("BH_PROF_RAIZ_MAX_CM", ("balance", "prof_raiz_max_cm"), float),
         ("BH_MODO_AVISO", ("telegram", "modo"), str),
         ("BH_NOMBRE_LOTE", ("telegram", "nombre_lote"), str),
+        ("BH_REZAGO_CLIMA", ("rezago_dias", "clima"), int),
         ("BH_EFICIENCIA_RIEGO", ("telegram", "eficiencia_aplicacion"), float),
     ]
 
@@ -193,7 +194,38 @@ def main(config_path: str = "config.yaml") -> int:
         fecha_desde = pd.to_datetime(cfg["campana"]["fecha_siembra"])
 
     rezago = max(cfg["rezago_dias"]["ndvi"], cfg["rezago_dias"]["clima"])
-    fecha_hasta = pd.to_datetime(date.today()) - timedelta(days=rezago)
+    hoy = pd.to_datetime(date.today())
+    fecha_hasta_disponible = hoy - timedelta(days=rezago)
+
+    # El usuario puede pedir una fecha de fin. Vacío = hasta donde haya datos.
+    pedido = os.environ.get("BH_FECHA_FIN", "").strip()
+    if pedido:
+        try:
+            fecha_pedida = pd.to_datetime(pedido)
+        except (ValueError, TypeError):
+            log.warning("Fecha de fin inválida ('%s'): se ignora.", pedido)
+            fecha_pedida = None
+    else:
+        fecha_pedida = None
+
+    if fecha_pedida is not None:
+        if fecha_pedida > hoy:
+            log.warning(
+                "La fecha de fin pedida (%s) es futura: se usa hoy como tope.",
+                fecha_pedida.date(),
+            )
+            fecha_pedida = hoy
+        if fecha_pedida > fecha_hasta_disponible:
+            # Se intenta igual: los días sin clima se recortan más abajo, en
+            # vez de entrar al balance como ceros y ensuciar la serie.
+            log.warning(
+                "Se pidió hasta el %s, pero AgERA5 suele tener unos %d días de "
+                "rezago. Se intentará igual y se recortará hasta donde haya datos.",
+                fecha_pedida.date(), rezago,
+            )
+        fecha_hasta = fecha_pedida
+    else:
+        fecha_hasta = fecha_hasta_disponible
 
     if fecha_desde > fecha_hasta:
         log.info(
@@ -220,11 +252,11 @@ def main(config_path: str = "config.yaml") -> int:
         fecha_hasta_str,
         max_cloud_coverage=cfg["cdse"]["max_cloud_coverage"],
         resolucion_m=cfg["cdse"]["resolucion_m"],
+        min_pixeles_validos_pct=cfg["cdse"].get("min_pixeles_validos_pct", 70.0),
     )
     log.info(
-        "NDVI: %d días con dato válido de %d días del rango.",
+        "NDVI: %d fechas con imagen utilizable en el rango.",
         df_ndvi["ndvi"].notna().sum(),
-        len(df_ndvi),
     )
 
     # 6. Clima (Copernicus Climate Data Store / AgERA5)
@@ -240,7 +272,57 @@ def main(config_path: str = "config.yaml") -> int:
     rango_fechas = pd.date_range(fecha_desde_str, fecha_hasta_str, freq="D")
     df_dias = pd.DataFrame({"fecha": rango_fechas})
     df_dias = df_dias.merge(df_clima, on="fecha", how="left")
-    df_dias = df_dias.merge(df_ndvi, on="fecha", how="left")
+    df_dias = df_dias.merge(
+        df_ndvi[["fecha", "ndvi"]] if "ndvi" in df_ndvi.columns else df_ndvi,
+        on="fecha", how="left",
+    )
+
+    # Completar los días sin imagen antes de correr el balance
+    df_dias, resumen_ndvi = rellenar_ndvi(
+        df_dias,
+        ndvi_previo=estado.ultimo_ndvi_valido,
+        max_dias_interpolar=cfg["cdse"].get("max_dias_interpolar", 30),
+    )
+    log.info(
+        "NDVI: %d observaciones reales, %d días interpolados, %d sostenidos al "
+        "final; hueco mayor entre imágenes: %d días.",
+        resumen_ndvi["observados"],
+        resumen_ndvi["interpolados"],
+        resumen_ndvi["arrastrados_al_final"],
+        resumen_ndvi["hueco_mayor"],
+    )
+
+    # Los días del final sin dato de clima no se procesan: entrarían al balance
+    # con ETo y lluvia en cero, lo que simula un día sin consumo ni aporte y
+    # deja una serie que parece completa pero no lo es. Mejor cortar ahí y
+    # retomarlos cuando AgERA5 los publique.
+    sin_clima = df_dias["eto_mm"].isna()
+    if sin_clima.any():
+        primer_hueco = sin_clima.idxmax() if sin_clima.iloc[-1] else None
+        if primer_hueco is not None and sin_clima.loc[primer_hueco:].all():
+            recortados = int(sin_clima.loc[primer_hueco:].sum())
+            ultimo_util = df_dias.loc[primer_hueco, "fecha"] - timedelta(days=1)
+            log.warning(
+                "Los últimos %d días (desde el %s) todavía no tienen datos de "
+                "clima: se procesan hasta el %s y se retomarán más adelante.",
+                recortados,
+                df_dias.loc[primer_hueco, "fecha"].date(),
+                ultimo_util.date(),
+            )
+            df_dias = df_dias.loc[:primer_hueco - 1] if primer_hueco > 0 else df_dias.iloc[0:0]
+        else:
+            log.warning(
+                "Hay %d días sueltos sin dato de clima dentro del rango; "
+                "se tratan como sin lluvia ni consumo.",
+                int(sin_clima.sum()),
+            )
+
+    if df_dias.empty:
+        log.info("No quedaron días con datos completos para procesar.")
+        if enviar_resumen:
+            enviar_resumen_actual(cfg, log)
+        return 0
+
     df_dias["riego_mm"] = 0.0  # cargar riegos reales acá si se registran en campo
 
     # 8. Correr el balance de forma incremental
