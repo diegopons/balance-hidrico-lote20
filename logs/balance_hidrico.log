@@ -4652,3 +4652,37 @@
 2026-10-02 15:20:53,024 [WARNING] main: ⚠️  ALERTA DE RIEGO: % Agua Útil (38.4%) por debajo del umbral (50%).
 2026-10-02 15:20:53,507 [INFO] src.notificaciones: Notificación de Telegram enviada.
 2026-10-02 15:20:53,508 [INFO] main: Corrida finalizada OK.
+2026-10-03 14:06:58,737 [INFO] main: ========== Nueva corrida de Balance Hídrico ==========
+2026-10-03 14:06:58,737 [INFO] src.aoi: AOI cargado desde GeoJSON: lote.geojson
+2026-10-03 14:06:58,763 [INFO] main: Lote cargado: 2.11 ha. BBox=(-63.74164, -31.858597, -63.739291, -31.856884)
+2026-10-03 14:06:58,763 [INFO] src.estado: Estado previo cargado: {'ultima_fecha_procesada': '2026-09-22', 'au_real_mm': 121.2122063058376, 'prof_raiz_cm': 200.0, 'ultimo_ndvi_valido': 0.3269115090370178}
+2026-10-03 14:06:58,765 [INFO] main: Procesando rango nuevo: 2026-09-23 -> 2026-09-23
+2026-10-03 14:06:58,765 [INFO] main: Descargando NDVI (Sentinel-2 / CDSE Statistical API)...
+2026-10-03 14:06:59,847 [INFO] src.auth_cdse: Token CDSE obtenido, válido por 1800 s.
+2026-10-03 14:07:00,637 [INFO] main: NDVI: 0 fechas con imagen utilizable en el rango.
+2026-10-03 14:07:00,638 [INFO] main: Descargando precipitación y ETo (CDS / AgERA5)...
+2026-10-03 14:07:00,644 [INFO] src.clima_agera5: Usando credenciales de CDS desde variables de entorno.
+2026-10-03 14:07:02,775 [INFO] src.clima_agera5: Pidiendo a AgERA5 la variable 'precipitation_flux'...
+2026-10-03 14:07:04,048 [INFO] ecmwf.datastores.legacy_client: [2026-06-17T00:00:00] As announced on our [Forum post](https://forum.ecmwf.int/t/agera5-version-1-1-to-be-deprecated-please-use-agera5-version-2-if-not-already/14940), the superseded AgERA5 version 1.1. is no longer updated and will subsequently be deprecated (along with version 1) later this year. AgERA5 v2 remains updated on a daily basis.
+2026-10-03 14:07:04,049 [INFO] ecmwf.datastores.legacy_client: Request ID is a504765c-3874-4d84-b327-f098b39e8c18
+2026-10-03 14:07:04,185 [INFO] ecmwf.datastores.legacy_client: status has been updated to accepted
+2026-10-03 14:07:38,124 [INFO] ecmwf.datastores.legacy_client: status has been updated to successful
+2026-10-03 14:07:38,376 [INFO] multiurl.base: Downloading https://object-store.os-api.cci2.ecmwf.int:443/cci2-prod-cache-1/2026-10-03/90ee0f27489ca5ddb0806986dda3f881.zip
+2026-10-03 14:07:40,177 [INFO] src.clima_agera5:   archivos recibidos para 'precipitation_flux': ['Precipitation-Flux_C3S-glob-agric_AgERA5_20260923_final-v2.0.0.area-subset.-31.706884000000002.-63.589291.-32.008597.-63.891639999999995.nc']
+2026-10-03 14:07:40,214 [INFO] src.clima_agera5:   Precipitation-Flux_C3S-glob-agric_AgERA5_20260923_final-v2.0.0.area-subset.-31.706884000000002.-63.589291.-32.008597.-63.891639999999995.nc -> ['Precipitation_Flux', 'crs']
+2026-10-03 14:07:40,217 [INFO] src.clima_agera5: Pidiendo a AgERA5 la variable 'reference_evapotranspiration'...
+2026-10-03 14:07:40,747 [INFO] ecmwf.datastores.legacy_client: [2026-06-17T00:00:00] As announced on our [Forum post](https://forum.ecmwf.int/t/agera5-version-1-1-to-be-deprecated-please-use-agera5-version-2-if-not-already/14940), the superseded AgERA5 version 1.1. is no longer updated and will subsequently be deprecated (along with version 1) later this year. AgERA5 v2 remains updated on a daily basis.
+2026-10-03 14:07:40,748 [INFO] ecmwf.datastores.legacy_client: Request ID is 41846275-007b-4de2-ae01-3b7084fb51c5
+2026-10-03 14:07:40,894 [INFO] ecmwf.datastores.legacy_client: status has been updated to accepted
+2026-10-03 14:07:54,973 [INFO] ecmwf.datastores.legacy_client: status has been updated to running
+2026-10-03 14:08:02,695 [INFO] ecmwf.datastores.legacy_client: status has been updated to successful
+2026-10-03 14:08:02,937 [INFO] multiurl.base: Downloading https://object-store.os-api.cci2.ecmwf.int:443/cci2-prod-cache-2/2026-10-03/3f2ac1fe664990194774fa694f88c721.zip
+2026-10-03 14:08:04,527 [INFO] src.clima_agera5:   archivos recibidos para 'reference_evapotranspiration': ['ReferenceET-PenmanMonteith-FAO56_C3S-glob-agric_AgERA5_20260923_final-v2.0.0.area-subset.-31.706884000000002.-63.589291.-32.008597.-63.891639999999995.nc']
+2026-10-03 14:08:04,533 [INFO] src.clima_agera5:   ReferenceET-PenmanMonteith-FAO56_C3S-glob-agric_AgERA5_20260923_final-v2.0.0.area-subset.-31.706884000000002.-63.589291.-32.008597.-63.891639999999995.nc -> ['ReferenceET_PenmanMonteith_FAO56', 'crs']
+2026-10-03 14:08:04,536 [INFO] src.clima_agera5: AgERA5: 1 días, precipitación OK, ETo OK
+2026-10-03 14:08:04,540 [INFO] main: NDVI: 0 observaciones reales, 0 días interpolados, 1 sostenidos al final; hueco mayor entre imágenes: 0 días.
+2026-10-03 14:08:04,547 [INFO] src.estado: CSV actualizado: data/balance_hidrico_lote20.csv (124 filas totales)
+2026-10-03 14:08:04,548 [INFO] main: Última fecha procesada: 2026-09-23 | %AU=38.0 | AU real=119.7 mm | NDVI=0.327
+2026-10-03 14:08:04,548 [WARNING] main: ⚠️  ALERTA DE RIEGO: % Agua Útil (38.0%) por debajo del umbral (50%).
+2026-10-03 14:08:05,354 [INFO] src.notificaciones: Notificación de Telegram enviada.
+2026-10-03 14:08:05,355 [INFO] main: Corrida finalizada OK.
