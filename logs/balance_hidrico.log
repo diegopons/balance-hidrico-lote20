@@ -4939,3 +4939,32 @@
 2026-10-05 14:38:30,527 [INFO] src.publicar_estado: Estado publicado en docs/estado_actual.json (2026-10-05, 47 % de agua útil).
 2026-10-05 14:38:31,083 [INFO] src.notificaciones: Notificación de Telegram enviada.
 2026-10-05 14:38:31,084 [INFO] main: Corrida finalizada OK.
+2026-10-05 17:42:39,656 [INFO] main: ========== Nueva corrida de Balance Hídrico ==========
+2026-10-05 17:42:39,656 [INFO] main: Parámetros recibidos del formulario: telegram.modo=(usar config)
+2026-10-05 17:42:39,657 [INFO] src.aoi: AOI cargado desde GeoJSON: lote.geojson
+2026-10-05 17:42:39,684 [INFO] main: Lote cargado: 24.95 ha. BBox=(-63.744628, -31.87461, -63.738492, -31.86969)
+2026-10-05 17:42:39,684 [WARNING] src.estado: ⚠️  Cambió alguno de los datos de base —lote, fecha de siembra, fuente de clima o perfil de suelo— (huella d3d484a9eb216479 -> 9c32608870716f83). El balance acumulado no corresponde: se reinicia desde cero.
+2026-10-05 17:42:39,684 [INFO] src.estado: Se inicializa el balance: AU=40.0 mm, profundidad de raíz=1 cm.
+2026-10-05 17:42:39,684 [WARNING] src.estado: Serie anterior archivada como balance_hidrico_lote20_hasta_20261005-174239.csv (cambió el lote, la siembra, el clima o el perfil de suelo). Se empieza una serie nueva.
+2026-10-05 17:42:39,687 [INFO] main: Procesando rango nuevo: 2026-05-28 -> 2026-10-03
+2026-10-05 17:42:39,687 [INFO] main: Descargando NDVI (Sentinel-2 / CDSE Statistical API)...
+2026-10-05 17:42:40,573 [INFO] src.auth_cdse: Token CDSE obtenido, válido por 1800 s.
+2026-10-05 17:42:42,733 [INFO] main: NDVI: 15 fechas con imagen utilizable en el rango.
+2026-10-05 17:42:42,734 [INFO] main: Clima: fuentes en orden ['siga', 'openmeteo']
+2026-10-05 17:42:46,487 [INFO] src.clima_siga: SIGA: estación 'Manfredi - EEA Manfredi' (A872907) a 1.6 km del lote.
+2026-10-05 17:46:07,829 [WARNING] src.clima: Fuente 'siga' no disponible: No se pudo consultar el SIGA (https://siga.inta.gob.ar/document/series/A872907.xls): The read operation timed out
+2026-10-05 17:46:08,375 [INFO] src.clima_openmeteo: Open-Meteo: 129 días (archivo=129). Último dato: 2026-10-03.
+2026-10-05 17:46:08,381 [INFO] src.clima: Clima · openmeteo aportó 129 días de lluvia y 129 de ETo.
+2026-10-05 17:46:08,382 [INFO] main: Clima · origen de los datos — lluvia: openmeteo 129d | ETo: openmeteo 129d
+2026-10-05 17:46:08,382 [WARNING] main: Clima · 'siga' no se pudo usar: No se pudo consultar el SIGA (https://siga.inta.gob.ar/document/series/A872907.xls): The read operation timed out
+2026-10-05 17:46:08,387 [INFO] main: NDVI: 15 observaciones reales, 114 días interpolados, 3 sostenidos al final; hueco mayor entre imágenes: 20 días.
+2026-10-05 17:46:08,479 [INFO] src.estado: CSV actualizado: data/balance_hidrico_lote20.csv (129 filas totales)
+2026-10-05 17:46:08,496 [INFO] src.mapas_ndvi: Generando mosaico de NDVI con 8 fechas...
+2026-10-05 17:46:15,213 [INFO] src.mapas_ndvi: Mosaico guardado en docs/ndvi_mosaico.png (8 fechas).
+2026-10-05 17:46:15,214 [INFO] main: Última fecha procesada: 2026-10-03 | %AU=71.1 | AU real=224.1 mm | NDVI=0.345
+2026-10-05 17:46:15,639 [INFO] src.clima_openmeteo: Pronóstico: 9 días, hasta 2026-10-14. Lluvia esperada: 49.7 mm.
+2026-10-05 17:46:15,646 [INFO] main: Pronóstico: Proyección a 9 días: no cruza el umbral; quedaría en 82 % el 14/10. Lluvia esperada: 50 mm.
+2026-10-05 17:46:15,646 [INFO] main: Riego: reposición total 91.1 mm netos | ajustada 85.2 mm netos (descuenta 5.9 mm hasta 2026-10-08).
+2026-10-05 17:46:15,650 [INFO] src.publicar_estado: Estado publicado en docs/estado_actual.json (2026-10-03, 71 % de agua útil).
+2026-10-05 17:46:15,651 [INFO] main: Sin condiciones para notificar (modo=(usar config)).
+2026-10-05 17:46:15,651 [INFO] main: Corrida finalizada OK.
