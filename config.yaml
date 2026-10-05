@@ -10,7 +10,7 @@ aoi:
 campana:
   fecha_siembra: "2026-05-28"      # usada solo la primera vez (estado inicial)
   au_real_inicial_mm: 40.0
-  prof_raiz_inicial_cm: 10
+  prof_raiz_inicial_cm: 1
 
 balance:
   umbral_riego_pct: 50
