@@ -185,6 +185,7 @@ def main(config_path: str = "config.yaml") -> int:
         aoi_info["geojson"],
         cfg["campana"]["fecha_siembra"],
         fuentes_clima=_orden_clima,
+        suelo=cfg.get("suelo"),
     )
     estado, motivo_reinicio = cargar_estado(
         cfg["rutas"]["estado_json"],

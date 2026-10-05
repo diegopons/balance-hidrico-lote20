@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def huella_corrida(
-    geojson_aoi: dict, fecha_siembra: str, fuentes_clima=None
+    geojson_aoi: dict, fecha_siembra: str, fuentes_clima=None, suelo=None
 ) -> str:
     """Identifica la combinación lote + fecha de siembra + fuente de clima.
 
@@ -39,10 +39,20 @@ def huella_corrida(
     una fuente usando otra no da una curva continua, da un escalón disfrazado
     de evolución. Cambiar el orden de `clima.fuentes` archiva la serie anterior
     y arranca de nuevo, igual que cambiar el lote.
+
+    El perfil de suelo entra por la misma razón, y es el caso menos evidente de
+    los tres: el agua que cada capa tenía al inicio se incorpora al balance el
+    día en que la raíz llega a esa capa. Si se carga la calicata a mitad de
+    campaña, las capas ya atravesadas aportaron el valor viejo y las que faltan
+    aportarían el nuevo, con lo que la serie mezcla dos perfiles distintos. Al
+    incluirlo acá, cargar o corregir la calicata archiva la serie anterior y
+    recalcula desde la siembra, que es lo único que da una curva coherente.
     """
     material = json.dumps(geojson_aoi, sort_keys=True) + "|" + str(fecha_siembra)
     if fuentes_clima:
         material += "|" + ",".join(str(f).strip().lower() for f in fuentes_clima)
+    if suelo:
+        material += "|" + json.dumps(suelo, sort_keys=True, default=str)
     return hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
 
 
@@ -80,12 +90,13 @@ def cargar_estado(
 
         if huella is not None and huella_guardada is not None and huella_guardada != huella:
             logger.warning(
-                "⚠️  Cambió el lote o la fecha de siembra (huella %s -> %s). "
+                "⚠️  Cambió alguno de los datos de base —lote, fecha de siembra, "
+                "fuente de clima o perfil de suelo— (huella %s -> %s). "
                 "El balance acumulado no corresponde: se reinicia desde cero.",
                 huella_guardada,
                 huella,
             )
-            motivo = "cambió el lote o la fecha de siembra"
+            motivo = "cambió el lote, la siembra, el clima o el perfil de suelo"
         elif huella is not None and huella_guardada is None:
             logger.info("Estado previo sin huella; se adopta la actual y se continúa.")
             logger.info("Estado previo cargado: %s", data)
