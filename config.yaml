@@ -56,7 +56,52 @@ balance:
 # los dos rezagos para no pedir un rango que todavía no tiene datos.
 rezago_dias:
   ndvi: 2
-  clima: 10
+  clima: 10            # AgERA5
+  clima_openmeteo: 1   # Open-Meteo entrega hasta ayer
+  clima_siga: 2        # la estación consolida el diario con 1-2 días
+
+# ---------------------------------------------------------------------------
+# Fuente de datos climáticos
+# ---------------------------------------------------------------------------
+clima:
+  # Fuentes en orden de prioridad. Cada día toma el dato de la primera que lo
+  # tenga; si una falla, se sigue con la siguiente sin tumbar la corrida.
+  # El CSV guarda en qué fuente salió cada valor (fuente_pp / fuente_eto).
+  #   siga       pluviómetro del INTA (medido, lo más cercano al lote)
+  #   openmeteo  grilla ~9 km, llega hasta ayer, además da pronóstico
+  #   agera5     reanálisis Copernicus, homogéneo pero ~10 días de atraso
+  fuentes:
+    - siga
+    - openmeteo
+
+  zona_horaria: "America/Argentina/Cordoba"
+
+  siga:
+    # Vacío = se elige automáticamente la estación más cercana al lote.
+    # Para el lote de Manfredi, A872907 ("Manfredi - EEA Manfredi") está a 930 m.
+    estacion_id:
+    max_km: 50
+    # Coeficiente de radiación de FAO-56 ec. 50: 0,16 interior, 0,19 costa.
+    # La estación no mide radiación, así que la ETo se calcula con Rs estimada
+    # a partir de la amplitud térmica. Validado contra Open-Meteo: −5 % en 21
+    # días, con 0,43 mm/día de error absoluto medio.
+    krs: 0.16
+
+  # Modelo del archivo histórico de Open-Meteo. Vacío = "best_match": empalma
+  # ERA5 con el modelo de pronóstico y llega hasta hoy. "era5" da reanálisis
+  # puro, pero con ~7 días de rezago y grilla más gruesa.
+  modelo_archivo:
+
+# ---------------------------------------------------------------------------
+# Pronóstico (solo con fuente "openmeteo")
+# ---------------------------------------------------------------------------
+# Proyecta el balance hacia adelante con la lluvia y ETo pronosticadas, para
+# avisar que el lote va a cruzar el umbral antes de que ocurra. No modifica el
+# estado ni el CSV: es una simulación aparte.
+pronostico:
+  habilitado: true
+  dias: 10          # máximo 16; cuanto más largo, menos confiable
+
 
 rutas:
   estado_json: "data/estado.json"

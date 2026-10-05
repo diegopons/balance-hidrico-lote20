@@ -149,6 +149,90 @@ el lote podía estar despejado.
 Los días posteriores a la última imagen no se pueden interpolar: se sostiene
 el último valor y el log dice cuántos son.
 
+## 6c. De dónde sale el clima
+
+El balance combina varias fuentes. Cada día toma el dato de la primera que lo
+tenga, y el CSV guarda en qué fuente salió cada valor (`fuente_pp`,
+`fuente_eto`). El orden se define en `config.yaml` → `clima.fuentes`:
+
+| | `siga` | `openmeteo` | `agera5` |
+|---|---|---|---|
+| Qué es | pluviómetro del INTA | grilla ~9 km | reanálisis, grilla ~25 km |
+| Lluvia | **medida** | modelada | reanálisis |
+| ETo | Penman-Monteith con datos de la estación | Penman-Monteith | reanálisis |
+| Rezago | 1–2 días | hasta ayer | ~10 días |
+| Credenciales | ninguna | ninguna | cuenta en Copernicus CDS |
+| Pronóstico | no | sí, 16 días | no |
+
+Por defecto: `siga` y, para lo que la estación no cubra, `openmeteo`. Si una
+fuente falla, la corrida sigue con la siguiente; si no responde ninguna, se
+aborta sin escribir nada, porque un día sin clima no es un día sin lluvia.
+
+Para probar las fuentes desde tu máquina, sin tocar nada:
+
+```
+python probar_clima.py        # últimos 30 días
+python probar_clima.py 90
+```
+
+Muestra el rezago real de cada una, las compara entre sí y arma la serie
+combinada.
+
+### Las fuentes no dan lo mismo
+
+Medido sobre el lote de Manfredi en septiembre de 2026, con la estación del
+INTA a 930 m como referencia:
+
+| 21 días comunes | Total | vs estación | Error medio diario | Correlación |
+|---|---|---|---|---|
+| Estación (pluviómetro) | 27,0 mm | — | — | — |
+| Open-Meteo | 27,4 mm | +1 % | 0,96 mm | 0,81 |
+| AgERA5 | 19,1 mm | −29 % | 0,49 mm | 0,98 |
+
+Open-Meteo acierta el total y reparte mal los días: el 09/09 puso 3,7 mm que no
+cayeron y el 20/09 se perdió casi toda una lluvia de 5,75 mm. AgERA5 sigue
+mejor la forma diaria pero subestima el volumen. Sobre 30 días la brecha de
+Open-Meteo se abre a +22 % (61,7 contra 50,5 mm).
+
+Por eso la estación va primero. Cambiar el orden a mitad de campaña mezcla
+series incompatibles: al hacerlo, conviene correr con "reiniciar" marcado.
+
+### La ETo de la estación
+
+La estación de Manfredi **no mide radiación solar** (0 de 266 días en 2026
+tienen heliofanía o radiación global), así que la ETo se calcula por
+Penman-Monteith FAO-56 con la radiación estimada desde la amplitud térmica
+(ec. 50, coeficiente `krs` = 0,16 para zonas de interior). Temperatura máxima y
+mínima, tensión de vapor y viento sí son medidos.
+
+Validación contra la ETo de Open-Meteo sobre 21 días: 71,0 contra 74,8 mm, es
+decir −5 %, con 0,43 mm/día de error absoluto medio y correlación 0,90.
+
+El viento de la planilla del SIGA viene en km/h. Se verificó empíricamente:
+interpretándolo como m/s la ETo daría 97,3 mm en esos mismos 21 días, un 30 %
+de más.
+
+### Advertencia sobre el acceso al SIGA
+
+No existe una API pública documentada del SIGA. Los endpoints que usa este
+sistema están tomados del paquete {siga} de R
+(github.com/AgRoMeteorologiaINTA/siga), que los dedujo por ingeniería inversa:
+el nombre del PHP está ofuscado y puede cambiar sin aviso. Por eso `siga` nunca
+debe ser la única fuente de la lista.
+
+### El pronóstico
+
+Con `pronostico.habilitado: true` y `openmeteo` entre las fuentes, después de
+calcular el balance el sistema corre los días pronosticados sobre una copia del
+estado y, si el lote va a cruzar el umbral, lo agrega al mensaje de Telegram:
+
+> Proyección: cruzaría el umbral en 4 días (06/10), con 152 mm (48 %).
+> Lluvia esperada en el período: 17 mm.
+
+No modifica el estado ni el CSV, y no cambia la lámina sugerida: solo anticipa.
+El NDVI no se pronostica, se sostiene el último observado, así que el horizonte
+conviene corto (10 días por defecto, máximo 16).
+
 ## 7. Notas y limitaciones a tener en cuenta
 
 - El AOI (`aoi/lote_20.shp`) descargado de Drive para armar este proyecto

@@ -95,6 +95,7 @@ def armar_mensaje(
     nombre_lote: str = "Lote 20",
     eficiencia_aplicacion: float = 0.85,
     reposicion_objetivo_pct: float = 100.0,
+    linea_pronostico: str | None = None,
 ) -> str:
     etiqueta, emoji = clasificar_condicion(pct_au)
     deficit_mm = round(max(0.0, au_max_mm - au_real_mm), 1)
@@ -122,11 +123,14 @@ def armar_mensaje(
             f"   Lámina bruta: <b>{riego['lamina_bruta_mm']:.1f} mm</b> "
             f"(ef. {eficiencia_aplicacion:.0%})",
             "",
-            "<i>Verificar pronóstico antes de aplicar: el cálculo no "
+            "<i>Verificar pronóstico antes de aplicar: la lámina no "
             "contempla lluvias previstas.</i>",
         ]
     else:
         lineas += ["", "Sin necesidad de riego por ahora."]
+
+    if linea_pronostico:
+        lineas += ["", f"🔭 <i>{linea_pronostico}</i>"]
 
     return "\n".join(lineas)
 

@@ -34,6 +34,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.aoi import cargar_aoi
 from src.balance import procesar_dias_nuevos
 from src.clima_agera5 import descargar_agera5
+from src.clima_openmeteo import descargar_openmeteo, descargar_pronostico
+from src import pronostico as mod_pronostico
+from src import clima as mod_clima
 from src.config import cargar_config
 from src.estado import (
     append_resultados_csv,
@@ -197,7 +200,22 @@ def main(config_path: str = "config.yaml") -> int:
     else:
         fecha_desde = pd.to_datetime(cfg["campana"]["fecha_siembra"])
 
-    rezago = max(cfg["rezago_dias"]["ndvi"], cfg["rezago_dias"]["clima"])
+    _orden_clima = [
+        str(f).lower()
+        for f in (cfg.get("clima", {}).get("fuentes")
+                  or [cfg.get("clima", {}).get("fuente", "agera5")])
+    ]
+    _rezagos = {
+        "siga": cfg["rezago_dias"].get("clima_siga", 2),
+        "openmeteo": cfg["rezago_dias"].get("clima_openmeteo", 1),
+        "agera5": cfg["rezago_dias"].get("clima", 10),
+    }
+    # Con varias fuentes alcanza con que una tenga el día: manda la más rápida.
+    rezago_clima = min(
+        (_rezagos[f] for f in _orden_clima if f in _rezagos),
+        default=cfg["rezago_dias"]["clima"],
+    )
+    rezago = max(cfg["rezago_dias"]["ndvi"], rezago_clima)
     hoy = pd.to_datetime(date.today())
     fecha_hasta_disponible = hoy - timedelta(days=rezago)
 
@@ -268,14 +286,34 @@ def main(config_path: str = "config.yaml") -> int:
         for d in df_ndvi.loc[df_ndvi["ndvi"].notna(), "fecha"].sort_values()
     ]
 
-    # 6. Clima (Copernicus Climate Data Store / AgERA5)
-    log.info("Descargando precipitación y ETo (CDS / AgERA5)...")
-    df_clima = descargar_agera5(
-        fecha_desde_str,
-        fecha_hasta_str,
-        aoi_info["bbox"],
-        request_template=cfg["cds"]["request_template"],
+    # 6. Clima: una o varias fuentes, por prioridad (ver src/clima.py)
+    cfg_clima = cfg.get("clima", {})
+    fuentes, estacion_siga = mod_clima.armar_fuentes(
+        cfg, aoi_info["bbox"], fecha_desde_str, fecha_hasta_str
     )
+    log.info("Clima: fuentes en orden %s", [n for n, _ in fuentes])
+    df_clima, detalle_clima = mod_clima.combinar(
+        fuentes, fecha_desde_str, fecha_hasta_str
+    )
+    log.info("Clima · origen de los datos — %s", mod_clima.resumen_origen(df_clima))
+    if estacion_siga:
+        log.info(
+            "Clima · estación SIGA usada: %s (%s) a %.1f km.",
+            estacion_siga.get("nombre"), estacion_siga.get("id_interno"),
+            estacion_siga.get("km", float("nan")),
+        )
+    if detalle_clima["fallidas"]:
+        for nombre, motivo in detalle_clima["fallidas"].items():
+            log.warning("Clima · '%s' no se pudo usar: %s", nombre, motivo)
+
+    # Sin clima no hay balance: con NaN el día se procesaría como ETc 0 y
+    # lluvia 0, que no es "no pasó nada" sino "no sabemos qué pasó".
+    if df_clima[["precipitacion_mm", "eto_mm"]].isna().all().all():
+        log.error(
+            "Ninguna fuente de clima devolvió datos para %s a %s. Se aborta la "
+            "corrida sin tocar el estado ni el CSV.", fecha_desde_str, fecha_hasta_str
+        )
+        return 1
 
     # 7. Merge en calendario diario completo del rango
     rango_fechas = pd.date_range(fecha_desde_str, fecha_hasta_str, freq="D")
@@ -388,6 +426,45 @@ def main(config_path: str = "config.yaml") -> int:
         )
 
         umbral = cfg["balance"]["umbral_riego_pct"]
+
+        # --- Proyección con pronóstico (no toca el estado ni el CSV) ---
+        linea_pronostico = None
+        cfg_pron = cfg.get("pronostico", {})
+        if cfg_pron.get("habilitado", False) and any(
+                n == "openmeteo" for n, _ in fuentes):
+            try:
+                df_fc = descargar_pronostico(
+                    aoi_info["bbox"],
+                    dias=int(cfg_pron.get("dias", 10)),
+                    zona_horaria=cfg_clima.get(
+                        "zona_horaria", "America/Argentina/Cordoba"),
+                )
+                df_proy = mod_pronostico.proyectar(
+                    estado_nuevo,
+                    df_fc,
+                    df_suelo,
+                    ndvi_actual=float(ultimo["ndvi"]),
+                    umbral_riego_pct=umbral,
+                    incremento_raiz_diario_cm=cfg["balance"]["incremento_raiz_diario_cm"],
+                    prof_raiz_max_cm=cfg["balance"]["prof_raiz_max_cm"],
+                    kc_a=cfg["balance"]["kc_a"],
+                    kc_b=cfg["balance"]["kc_b"],
+                    recarga_por_capa=cfg["balance"].get("recarga_por_capa", True),
+                    umbral_lluvia_efectiva_mm=cfg["balance"].get(
+                        "umbral_lluvia_efectiva_mm", 15.0),
+                    tabla_prof_raiz=cfg["balance"].get("prof_raiz_por_dds"),
+                    fecha_siembra=cfg["campana"]["fecha_siembra"],
+                )
+                linea_pronostico = mod_pronostico.resumir(
+                    df_proy, umbral, ya_en_deficit=float(ultimo["pct_au"]) < umbral
+                )
+                if linea_pronostico:
+                    log.info("Pronóstico: %s", linea_pronostico)
+            except Exception as e:  # noqa: BLE001
+                # El balance ya está calculado y guardado: un fallo del
+                # pronóstico no debe tumbar la corrida.
+                log.warning("No se pudo calcular la proyección: %s", e)
+
         if ultimo["pct_au"] < umbral:
             log.warning(
                 "⚠️  ALERTA DE RIEGO: %% Agua Útil (%.1f%%) por debajo del umbral (%s%%).",
@@ -437,6 +514,7 @@ def main(config_path: str = "config.yaml") -> int:
                         nombre_lote=cfg_tg.get("nombre_lote", "Lote 20"),
                         eficiencia_aplicacion=cfg_tg.get("eficiencia_aplicacion", 0.85),
                         reposicion_objetivo_pct=cfg_tg.get("reposicion_objetivo_pct", 100.0),
+                        linea_pronostico=linea_pronostico,
                     )
                     enviar_telegram(tg_token, tg_chat_id, mensaje)
                 else:
