@@ -37,6 +37,7 @@ from src.clima_agera5 import descargar_agera5
 from src.clima_openmeteo import descargar_openmeteo, descargar_pronostico
 from src import pronostico as mod_pronostico
 from src import clima as mod_clima
+from src import publicar_estado as mod_estado_json
 from src.config import cargar_config
 from src.estado import (
     append_resultados_csv,
@@ -394,6 +395,15 @@ def main(config_path: str = "config.yaml") -> int:
 
     # 9. Guardar CSV histórico y estado
     append_resultados_csv(cfg["rutas"]["salida_csv"], df_resultados)
+
+    # Para el JSON de los agentes hace falta la campaña entera, no solo los días
+    # nuevos de esta corrida: se relee el CSV ya consolidado.
+    try:
+        df_completo_para_json = pd.read_csv(
+            cfg["rutas"]["salida_csv"], parse_dates=["fecha"]
+        )
+    except Exception:  # noqa: BLE001
+        df_completo_para_json = df_resultados
     guardar_estado(cfg["rutas"]["estado_json"], estado_nuevo, huella=huella)
 
     # 10. Mosaico de imágenes NDVI (si está habilitado)
@@ -433,6 +443,7 @@ def main(config_path: str = "config.yaml") -> int:
 
         # --- Proyección con pronóstico (no toca el estado ni el CSV) ---
         linea_pronostico = None
+        df_pronostico_pub = None
         cfg_pron = cfg.get("pronostico", {})
         if cfg_pron.get("habilitado", False) and any(
                 n == "openmeteo" for n, _ in fuentes):
@@ -459,6 +470,7 @@ def main(config_path: str = "config.yaml") -> int:
                     tabla_prof_raiz=cfg["balance"].get("prof_raiz_por_dds"),
                     fecha_siembra=cfg["campana"]["fecha_siembra"],
                 )
+                df_pronostico_pub = df_fc
                 linea_pronostico = mod_pronostico.resumir(
                     df_proy, umbral, ya_en_deficit=float(ultimo["pct_au"]) < umbral
                 )
@@ -475,6 +487,25 @@ def main(config_path: str = "config.yaml") -> int:
                 ultimo["pct_au"],
                 umbral,
             )
+
+        # --- JSON para agentes conversacionales (n8n, bots) ---
+        try:
+            mod_estado_json.publicar(
+                mod_estado_json.construir_estado(
+                    df_completo_para_json,
+                    cfg,
+                    aoi_info,
+                    estacion_siga=estacion_siga,
+                    detalle_clima=detalle_clima,
+                    linea_pronostico=linea_pronostico,
+                    df_pronostico=df_pronostico_pub,
+                ),
+                destino=cfg.get("rutas", {}).get(
+                    "estado_json_publico", "docs/estado_actual.json"),
+            )
+        except Exception as e:  # noqa: BLE001
+            # El balance ya está guardado: que falle el JSON no debe tumbar nada.
+            log.warning("No se pudo publicar el estado para agentes: %s", e)
 
         # --- Telegram ---
         cfg_tg = cfg.get("telegram", {})

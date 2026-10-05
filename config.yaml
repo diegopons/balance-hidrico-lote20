@@ -106,6 +106,9 @@ pronostico:
 rutas:
   estado_json: "data/estado.json"
   salida_csv: "data/balance_hidrico_lote20.csv"
+  # Resumen compacto para agentes conversacionales (n8n, bots).
+  # Se publica en GitHub Pages junto al tablero.
+  estado_json_publico: "docs/estado_actual.json"
   log_file: "logs/balance_hidrico.log"
 
 # ---------------------------------------------------------------------------
