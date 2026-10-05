@@ -364,6 +364,7 @@
       <div class="campo">
         <label for="f-siembra">Fecha de siembra</label>
         <input type="date" id="f-siembra">
+        <small id="f-siembra-eco" class="ayuda"></small>
         <span class="pista">Desde cuándo se calcula el balance</span>
       </div>
       <div class="campo">
@@ -453,6 +454,7 @@
 
     <div class="acciones" style="margin-top:18px;max-width:520px">
       <button id="btn-guardar" class="principal" disabled>Guardar lote y ejecutar</button>
+      <button id="btn-defaults">Guardar parámetros como predeterminados</button>
       <button id="btn-olvidar">Olvidar el token guardado</button>
     </div>
 
@@ -1177,6 +1179,115 @@ function recolectarParametros(){
   }
   return p;
 }
+
+// ---------------------------------------------------------------------------
+// Guardar los parámetros en config.yaml
+// ---------------------------------------------------------------------------
+// El formulario de arriba manda los valores como inputs de UNA corrida: sirven
+// para probar, pero la corrida automática del día siguiente vuelve a usar los
+// del archivo. Esto escribe los que completaste en config.yaml, para que pasen
+// a ser los de siempre.
+
+async function leerArchivoRepo(token, repo, ruta){
+  const r = await api(
+    `/repos/${repo.propietario}/${repo.nombre}/contents/${ruta}?ref=${repo.rama}`, token);
+  const binario = Uint8Array.from(atob(r.content.replace(/\n/g,'')), c => c.charCodeAt(0));
+  return new TextDecoder('utf-8').decode(binario);
+}
+
+function aCodigoBase64(texto){
+  const bytes = new TextEncoder().encode(texto);
+  let bin = '';
+  bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin);
+}
+
+// Reemplaza el valor de una clave conservando sangría y comentario de la línea.
+function aplicarEnYaml(texto, clave, valor){
+  const re = new RegExp('^([ \\t]*' + clave + ':[ \\t]*)([^#\\n]*?)([ \\t]*#.*)?$', 'm');
+  if(!re.test(texto)) return {texto, cambiada:false};
+  const nuevo = texto.replace(re, (_m, pre, _val, com) => pre + valor + (com || ''));
+  return {texto:nuevo, cambiada:true};
+}
+
+document.getElementById('btn-defaults').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-defaults');
+  const token = document.getElementById('f-token').value.trim();
+  const repo = leerRepo();
+
+  registro.innerHTML = '';
+  if(!repo){ anotar('Indicá el repositorio con el formato usuario/repositorio.', 'err'); return; }
+  if(!token){ anotar('Falta el token de GitHub.', 'err'); return; }
+
+  const v = id => document.getElementById(id).value.trim();
+  const cambios = [];
+  if(v('f-siembra')) cambios.push(['fecha_siembra', '"' + v('f-siembra') + '"']);
+  if(v('f-au'))      cambios.push(['au_real_inicial_mm', v('f-au')]);
+  if(v('f-raiz'))    cambios.push(['prof_raiz_inicial_cm', v('f-raiz')]);
+  if(v('f-umbral'))  cambios.push(['umbral_riego_pct', v('f-umbral')]);
+  if(v('f-nombre'))  cambios.push(['nombre_lote', '"' + v('f-nombre') + '"']);
+
+  if(!cambios.length){
+    anotar('No completaste ningún parámetro: no hay nada que guardar.', 'err');
+    return;
+  }
+
+  btn.disabled = true;
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Guardando…';
+
+  try {
+    guardarToken(token, document.getElementById('f-recordar').checked);
+    anotar('Leyendo config.yaml…');
+    let yaml = await leerArchivoRepo(token, repo, 'config.yaml');
+
+    const hechos = [], fallados = [];
+    for(const [clave, valor] of cambios){
+      const r = aplicarEnYaml(yaml, clave, valor);
+      yaml = r.texto;
+      (r.cambiada ? hechos : fallados).push(clave + ': ' + valor);
+    }
+    fallados.forEach(c => anotar('No encontré la clave en config.yaml: ' + c, 'err'));
+    if(!hechos.length){ anotar('No se cambió nada.', 'err'); return; }
+
+    hechos.forEach(c => anotar('  ' + c));
+    const sha = await commitearArchivos(token, repo,
+      [{ruta:'config.yaml', contenido: yaml}],
+      'Parámetros actualizados desde la página');
+    anotar('Commit ' + sha.slice(0,7) + ' creado.', 'ok');
+
+    const cambiaSiembra = hechos.some(h => h.startsWith('fecha_siembra'));
+    mostrarAviso('Parámetros guardados. Desde ahora la corrida automática los usa.' +
+      (cambiaSiembra ? ' Como cambió la fecha de siembra, la próxima corrida archiva ' +
+                       'la serie anterior y recalcula desde cero.' : ''), 'ok');
+
+  } catch(err){
+    if(err.status === 401){
+      anotar('Token rechazado (401).', 'err');
+    } else if(err.status === 403 || err.status === 404){
+      anotar('Sin permiso (' + err.status + ') o no existe config.yaml en el repositorio.', 'err');
+    } else {
+      anotar('Error: ' + err.message, 'err');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
+});
+
+// La fecha se escribe en palabras debajo del campo: un 05/01 puesto por error
+// donde iba 28/05 es invisible en el formato corto, y arrastra meses de más.
+document.getElementById('f-siembra').addEventListener('change', () => {
+  const eco = document.getElementById('f-siembra-eco');
+  const val = document.getElementById('f-siembra').value;
+  if(!val){ eco.textContent = ''; return; }
+  const [a,m,d] = val.split('-').map(Number);
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio',
+                 'agosto','septiembre','octubre','noviembre','diciembre'];
+  const dias = Math.round((Date.now() - Date.UTC(a,m-1,d)) / 86400000);
+  eco.textContent = `${d} de ${meses[m-1]} de ${a}` +
+    (dias >= 0 ? ` — hace ${dias} días` : ` — dentro de ${-dias} días`);
+});
 
 document.getElementById('btn-guardar').addEventListener('click', async () => {
   const btn = document.getElementById('btn-guardar');
