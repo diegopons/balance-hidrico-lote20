@@ -23,15 +23,26 @@ from .balance import EstadoBalance
 logger = logging.getLogger(__name__)
 
 
-def huella_corrida(geojson_aoi: dict, fecha_siembra: str) -> str:
-    """Identifica la combinación lote + fecha de siembra.
+def huella_corrida(
+    geojson_aoi: dict, fecha_siembra: str, fuentes_clima=None
+) -> str:
+    """Identifica la combinación lote + fecha de siembra + fuente de clima.
 
     Si cambia el polígono o la fecha de siembra, el balance acumulado de
     antes ya no corresponde: hay que empezar de cero. Guardamos esta huella
     junto al estado para poder detectarlo solos, en lugar de depender de
     que alguien se acuerde de borrar estado.json a mano.
+
+    La fuente de clima entra por el mismo motivo. Medido sobre este lote,
+    Open-Meteo entregó un 22 % más de lluvia que el pluviómetro del INTA en
+    30 días, y AgERA5 un 29 % menos en 21 días: seguir una serie empezada con
+    una fuente usando otra no da una curva continua, da un escalón disfrazado
+    de evolución. Cambiar el orden de `clima.fuentes` archiva la serie anterior
+    y arranca de nuevo, igual que cambiar el lote.
     """
     material = json.dumps(geojson_aoi, sort_keys=True) + "|" + str(fecha_siembra)
+    if fuentes_clima:
+        material += "|" + ",".join(str(f).strip().lower() for f in fuentes_clima)
     return hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
 
 

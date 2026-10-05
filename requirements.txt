@@ -10,3 +10,4 @@ cdsapi>=0.7
 xarray>=2023.1
 netCDF4>=1.6
 Pillow>=10.0        # mosaico de imágenes NDVI
+xlrd>=2.0           # la planilla del SIGA es .xls BIFF; openpyxl no la abre

@@ -173,9 +173,18 @@ def main(config_path: str = "config.yaml") -> int:
     log.info("Lote cargado: %.2f ha. BBox=%s", aoi_info["area_ha"], aoi_info["bbox"])
 
     # 3. Estado y suelo
+    _orden_clima = [
+        str(f).lower()
+        for f in (cfg.get("clima", {}).get("fuentes")
+                  or [cfg.get("clima", {}).get("fuente", "agera5")])
+    ]
     # La huella ata el estado guardado al lote y a la fecha de siembra: si
     # cualquiera de los dos cambió, el balance acumulado no sirve y se reinicia.
-    huella = huella_corrida(aoi_info["geojson"], cfg["campana"]["fecha_siembra"])
+    huella = huella_corrida(
+        aoi_info["geojson"],
+        cfg["campana"]["fecha_siembra"],
+        fuentes_clima=_orden_clima,
+    )
     estado, motivo_reinicio = cargar_estado(
         cfg["rutas"]["estado_json"],
         au_real_inicial=cfg["campana"]["au_real_inicial_mm"],
@@ -200,11 +209,6 @@ def main(config_path: str = "config.yaml") -> int:
     else:
         fecha_desde = pd.to_datetime(cfg["campana"]["fecha_siembra"])
 
-    _orden_clima = [
-        str(f).lower()
-        for f in (cfg.get("clima", {}).get("fuentes")
-                  or [cfg.get("clima", {}).get("fuente", "agera5")])
-    ]
     _rezagos = {
         "siga": cfg["rezago_dias"].get("clima_siga", 2),
         "openmeteo": cfg["rezago_dias"].get("clima_openmeteo", 1),
