@@ -145,6 +145,26 @@ def construir_estado(
             pron["lluvia_esperada_mm"] = round(
                 float(df_pronostico["precipitacion_mm"].sum()), 1
             )
+            # El total no alcanza para decidir: 50 mm mañana y 50 mm dentro de
+            # nueve días llevan a riegos distintos. Va el detalle por día.
+            pron["por_dia"] = [
+                {
+                    "fecha": str(pd.to_datetime(f["fecha"]).date()),
+                    "lluvia_mm": round(float(f["precipitacion_mm"]), 1),
+                    "eto_mm": round(float(f["eto_mm"]), 2),
+                }
+                for _, f in df_pronostico.iterrows()
+            ]
+            lluvias = df_pronostico[df_pronostico["precipitacion_mm"] >= 5]
+            if not lluvias.empty:
+                primera = lluvias.iloc[0]
+                dias = (pd.to_datetime(primera["fecha"])
+                        - pd.Timestamp.today().normalize()).days
+                pron["proxima_lluvia"] = {
+                    "fecha": str(pd.to_datetime(primera["fecha"]).date()),
+                    "en_dias": int(dias),
+                    "mm": round(float(primera["precipitacion_mm"]), 1),
+                }
         estado["pronostico"] = pron
 
     # --- advertencias: lo que el agente NO debe afirmar de más ---
@@ -156,10 +176,18 @@ def construir_estado(
             "cambiado desde entonces."
         )
     if estado["estado_actual"]["necesita_riego"]:
-        advertencias.append(
-            "La lámina sugerida repone hasta capacidad de campo y no descuenta "
-            "la lluvia pronosticada."
-        )
+        prox = (estado.get("pronostico") or {}).get("proxima_lluvia")
+        if prox:
+            advertencias.append(
+                f"Se esperan {prox['mm']:.0f} mm el {prox['fecha']}, en "
+                f"{prox['en_dias']} día(s): conviene descontarlos de la lámina o "
+                "esperar. La lámina sugerida NO los descuenta."
+            )
+        else:
+            advertencias.append(
+                "La lámina sugerida repone hasta capacidad de campo y no "
+                "descuenta la lluvia pronosticada."
+            )
     if estado["campana"]["dias_desde_siembra"] < 0:
         advertencias.insert(0,
             "INCONSISTENTE: el último dato es anterior a la fecha de siembra del "

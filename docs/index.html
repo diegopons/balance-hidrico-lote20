@@ -210,6 +210,22 @@
   .registro .l-err{color:var(--alerta)}
   .registro .l-info{color:var(--tinta-suave)}
 
+
+/* ---- pronóstico ---- */
+#pronostico{margin-top:16px;padding:14px 16px;border:1px solid var(--linea);
+  border-radius:10px;background:#fbfcfd}
+#pronostico h3{margin:0 0 4px;font-size:1rem;color:var(--azul)}
+#pronostico .pron-resumen{margin:0 0 10px;font-size:.9rem;color:var(--tinta)}
+#pronostico .pron-alerta{margin:0 0 10px;padding:8px 10px;border-radius:8px;
+  background:#fdf3e7;border-left:3px solid var(--deficit);font-size:.88rem}
+#pronostico .pron-dias{display:flex;gap:3px;align-items:flex-end}
+#pronostico .pron-dia{flex:1 1 0;min-width:0;text-align:center}
+#pronostico .pron-barra{background:#cfe3f2;border-radius:3px 3px 0 0;margin:0 auto 3px;
+  width:70%;max-width:24px;min-height:2px}
+#pronostico .pron-dia.seca .pron-barra{background:#e8ecef}
+#pronostico .pron-mm{font-size:.72rem;color:var(--tinta);display:block;line-height:1.1}
+#pronostico .pron-fecha{font-size:.68rem;color:var(--gris);display:block}
+#pronostico .pron-pie{margin:8px 0 0;font-size:.76rem;color:var(--gris)}
 </style>
 </head>
 <body>
@@ -255,6 +271,7 @@
         </dl>
 
         <div class="recomendacion" id="recomendacion"></div>
+        <div id="pronostico" class="oculto"></div>
       </div>
 
       <div>
@@ -534,6 +551,49 @@ function parsearCSV(texto){
     return o;
   }).filter(d => d.fecha instanceof Date && !isNaN(d.fecha));
 }
+
+// ===================== pronóstico =====================
+// Sale de estado_actual.json, que publica la misma corrida que el CSV. El total
+// de lluvia esperada no alcanza para decidir un riego: lo que importa es cuándo
+// llueve, así que se muestra día por día.
+fetch("estado_actual.json", {cache:"no-store"})
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(est => {
+    const p = est.pronostico;
+    if(!p || !p.por_dia || !p.por_dia.length) return;
+
+    const cont = document.getElementById("pronostico");
+    const maxMm = Math.max(1, ...p.por_dia.map(d => d.lluvia_mm));
+    const barras = p.por_dia.map(d => {
+      const alto = Math.round(6 + (d.lluvia_mm / maxMm) * 54);
+      const f = new Date(d.fecha + "T00:00:00");
+      return `<div class="pron-dia${d.lluvia_mm > 0 ? "" : " seca"}">
+          <div class="pron-barra" style="height:${d.lluvia_mm > 0 ? alto : 3}px"></div>
+          <span class="pron-mm">${d.lluvia_mm > 0 ? num(d.lluvia_mm,0) : "—"}</span>
+          <span class="pron-fecha">${f.getDate()}</span>
+        </div>`;
+    }).join("");
+
+    const prox = p.proxima_lluvia;
+    const necesita = est.estado_actual && est.estado_actual.necesita_riego;
+    const alerta = (prox && necesita)
+      ? `<p class="pron-alerta"><strong>Se esperan ${num(prox.mm,0)} mm el
+           ${fechaCorta(new Date(prox.fecha + "T00:00:00"))}</strong>, en
+           ${prox.en_dias} día${prox.en_dias === 1 ? "" : "s"}.
+           La lámina sugerida no los descuenta: conviene restarlos o esperar.</p>`
+      : "";
+
+    cont.innerHTML = `<h3>Pronóstico a ${p.dias} días</h3>
+      <p class="pron-resumen">${p.resumen || ""}</p>
+      ${alerta}
+      <div class="pron-dias">${barras}</div>
+      <p class="pron-pie">Lluvia esperada en milímetros, por día del mes
+        (${fechaCorta(new Date(p.por_dia[0].fecha + "T00:00:00"))} al
+         ${fechaCorta(new Date(p.por_dia[p.por_dia.length-1].fecha + "T00:00:00"))}).
+        Total: ${num(p.lluvia_esperada_mm,1)} mm. Fuente: Open-Meteo.</p>`;
+    cont.classList.remove("oculto");
+  })
+  .catch(() => { /* sin pronóstico: el tablero funciona igual */ });
 
 fetch(RUTA_CSV, {cache:"no-store"})
   .then(r => { if(!r.ok) throw new Error("sin archivo"); return r.text(); })
