@@ -101,6 +101,10 @@ clima:
 pronostico:
   habilitado: true
   dias: 10          # máximo 16; cuanto más largo, menos confiable
+  # Ventana para la lámina "ajustada": solo se descuenta la lluvia
+  # pronosticada dentro de estos días. Corta a propósito — descontar una
+  # lluvia de 8 días que después no cae deja al cultivo en estrés.
+  dias_descuento: 3
 
 
 rutas:

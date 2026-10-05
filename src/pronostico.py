@@ -23,7 +23,7 @@ from typing import Optional
 
 import pandas as pd
 
-from .balance import EstadoBalance, procesar_dias_nuevos
+from .balance import EstadoBalance, precipitacion_efectiva, procesar_dias_nuevos
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,66 @@ def primer_cruce(df_proyeccion: pd.DataFrame, umbral_pct: float) -> Optional[dic
         "dias": int((pd.to_datetime(fila["fecha"]) - hoy).days),
         "pct_au": float(fila["pct_au"]),
         "au_real_mm": float(fila["au_real_mm"]),
+    }
+
+
+def lamina_ajustada(
+    lamina_neta_mm: float,
+    df_pronostico: Optional[pd.DataFrame],
+    eficiencia_aplicacion: float = 0.85,
+    dias_descuento: int = 3,
+    umbral_lluvia_efectiva_mm: float = 15.0,
+) -> Optional[dict]:
+    """Lámina de riego descontando la lluvia pronosticada a corto plazo.
+
+    La lámina sugerida clásica responde "cuánto falta HOY para llegar a
+    capacidad de campo". Esta responde "cuánto conviene aplicar HOY si en los
+    próximos días va a llover lo que dice el pronóstico". Son dos números
+    distintos y los dos sirven: el primero es la necesidad del cultivo, el
+    segundo es la decisión de manejo.
+
+    Decisiones de cálculo, explícitas porque cambian el resultado:
+
+      * Se descuenta lluvia EFECTIVA, no lluvia caída, con la misma fórmula
+        que usa el balance (USDA-SCS por encima del umbral). Descontar los
+        milímetros brutos sobreestimaría el aporte: de un evento de 40 mm no
+        entran 40 al perfil.
+      * La ventana es corta a propósito (3 días por defecto). Más allá de eso
+        el pronóstico de lluvia convectiva en la región no sostiene una
+        decisión de riego, y descontar una lluvia que no llega deja al
+        cultivo en estrés.
+      * El descuento se topea en la lámina neta: si llueve más que el
+        déficit, la lámina ajustada es cero, no negativa. El excedente
+        percola, no se guarda.
+
+    Devuelve None si no hay pronóstico para descontar.
+    """
+    if df_pronostico is None or df_pronostico.empty:
+        return None
+
+    dias = max(1, int(dias_descuento))
+    ventana = df_pronostico.sort_values("fecha").head(dias)
+    if ventana.empty:
+        return None
+
+    efectiva = float(
+        sum(
+            precipitacion_efectiva(float(pp), umbral_lluvia_efectiva_mm)
+            for pp in ventana["precipitacion_mm"]
+        )
+    )
+    descuento = min(efectiva, float(lamina_neta_mm))
+    neta = max(0.0, float(lamina_neta_mm) - descuento)
+    bruta = neta / eficiencia_aplicacion if eficiencia_aplicacion > 0 else 0.0
+
+    return {
+        "lamina_neta_mm": round(neta, 1),
+        "lamina_bruta_mm": round(bruta, 1),
+        "descuento_mm": round(descuento, 1),
+        "lluvia_pronosticada_mm": round(float(ventana["precipitacion_mm"].sum()), 1),
+        "lluvia_efectiva_mm": round(efectiva, 1),
+        "ventana_dias": int(len(ventana)),
+        "hasta": str(pd.to_datetime(ventana["fecha"].max()).date()),
     }
 
 

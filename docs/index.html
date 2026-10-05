@@ -91,6 +91,22 @@
   }
   .recomendacion p{margin:6px 0 0;font-size:13.5px;color:var(--tinta-suave);line-height:1.45}
 
+  /* Las dos láminas, lado a lado en pantalla ancha y una debajo de la otra
+     en el celular, que es donde se lee esto la mayoría de las veces. */
+  .dos-laminas{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px}
+  .lam-op{
+    flex:1 1 200px;min-width:0;padding:12px 14px;
+    background:#fff;border:1px solid var(--linea);
+  }
+  .lam-op.lam-ajustada{border-left:3px solid var(--optimo)}
+  .lam-rotulo{
+    display:block;font-size:11.5px;font-weight:600;text-transform:uppercase;
+    letter-spacing:.06em;color:var(--tinta-suave);
+  }
+  .lam-op .lamina{display:block;font-size:26px}
+  .lam-nota{display:block;font-size:12.5px;color:var(--tinta-suave);line-height:1.4}
+  .lam-pie{font-size:12.5px !important}
+
   /* ---------- secciones ---------- */
   section{margin-bottom:28px}
   h2{
@@ -556,9 +572,19 @@ function parsearCSV(texto){
 // Sale de estado_actual.json, que publica la misma corrida que el CSV. El total
 // de lluvia esperada no alcanza para decidir un riego: lo que importa es cuándo
 // llueve, así que se muestra día por día.
+// El JSON y el CSV se piden por separado y pueden llegar en cualquier orden,
+// así que cada uno guarda lo suyo y vuelve a pintar la recomendación con lo
+// que haya disponible. Sin el JSON el tablero sigue funcionando: muestra la
+// lámina de reposición total y nada más.
+let ESTADO_PUB = null;
+let ULTIMO_CSV = null;
+
 fetch("estado_actual.json", {cache:"no-store"})
   .then(r => r.ok ? r.json() : Promise.reject())
   .then(est => {
+    ESTADO_PUB = est;
+    pintarRecomendacion();
+
     const p = est.pronostico;
     if(!p || !p.por_dia || !p.por_dia.length) return;
 
@@ -579,8 +605,7 @@ fetch("estado_actual.json", {cache:"no-store"})
     const alerta = (prox && necesita)
       ? `<p class="pron-alerta"><strong>Se esperan ${num(prox.mm,0)} mm el
            ${fechaCorta(new Date(prox.fecha + "T00:00:00"))}</strong>, en
-           ${prox.en_dias} día${prox.en_dias === 1 ? "" : "s"}.
-           La lámina sugerida no los descuenta: conviene restarlos o esperar.</p>`
+           ${prox.en_dias} día${prox.en_dias === 1 ? "" : "s"}.</p>`
       : "";
 
     cont.innerHTML = `<h3>Pronóstico a ${p.dias} días</h3>
@@ -608,6 +633,64 @@ fetch(RUTA_CSV, {cache:"no-store"})
     document.getElementById("meta").textContent = "Sin datos aún";
   });
 
+// ===================== recomendación de riego =====================
+// Dos números, no uno. El de reposición total contesta "cuánta agua le falta
+// al cultivo hoy"; el ajustado contesta "cuánta conviene aplicar hoy si el
+// pronóstico se cumple". Mostrar solo el primero lleva a regar de más cuando
+// entra un frente; mostrar solo el segundo esconde el riesgo de que la lluvia
+// no llegue. El productor decide con los dos a la vista.
+function pintarRecomendacion(){
+  if(!ULTIMO_CSV) return;
+  const caja = document.getElementById("recomendacion");
+  const {pct_au, deficitMM} = ULTIMO_CSV;
+
+  if(pct_au >= UMBRAL_RIEGO){
+    caja.className = "recomendacion ok";
+    caja.innerHTML =
+      "<h3>Sin necesidad de riego</h3>" +
+      "<p>El agua útil está por encima del umbral de " + UMBRAL_RIEGO + " %. " +
+      "Faltan " + num(deficitMM) + " mm para capacidad de campo.</p>";
+    return;
+  }
+
+  const bruta = deficitMM / EFICIENCIA;
+  const aj = ESTADO_PUB && ESTADO_PUB.estado_actual
+    ? ESTADO_PUB.estado_actual.riego_ajustado_por_pronostico : null;
+
+  caja.className = "recomendacion";
+
+  if(!aj){
+    caja.innerHTML =
+      "<h3>Conviene regar</h3>" +
+      "<div class='lamina'>" + num(bruta) + " mm</div>" +
+      "<p>Lámina bruta con " + Math.round(EFICIENCIA*100) + " % de eficiencia. " +
+      "Neta: " + num(deficitMM) + " mm. Revisá el pronóstico antes de aplicar.</p>";
+    return;
+  }
+
+  const hasta = fechaCorta(new Date(aj.hasta + "T00:00:00"));
+  caja.innerHTML =
+    "<h3>Conviene regar</h3>" +
+    "<div class='dos-laminas'>" +
+      "<div class='lam-op'>" +
+        "<span class='lam-rotulo'>Reposición total</span>" +
+        "<span class='lamina'>" + num(bruta) + " mm</span>" +
+        "<span class='lam-nota'>Lo que falta hoy, sin mirar el pronóstico. " +
+        "Neta " + num(deficitMM) + " mm.</span>" +
+      "</div>" +
+      "<div class='lam-op lam-ajustada'>" +
+        "<span class='lam-rotulo'>Ajustada al pronóstico</span>" +
+        "<span class='lamina'>" + num(aj.bruto_mm) + " mm</span>" +
+        "<span class='lam-nota'>Descuenta " + num(aj.lluvia_descontada_mm) +
+        " mm efectivos de los " + num(aj.lluvia_pronosticada_mm) +
+        " mm esperados hasta el " + hasta + ". Neta " + num(aj.neto_mm) + " mm.</span>" +
+      "</div>" +
+    "</div>" +
+    "<p class='lam-pie'>Las dos son brutas, con " + Math.round(EFICIENCIA*100) +
+    " % de eficiencia. La ajustada apuesta a que esa lluvia llega: si no llega, " +
+    "falta reponer la diferencia (" + num(bruta - aj.bruto_mm) + " mm).</p>";
+}
+
 // ===================== render =====================
 function dibujarTodo(datos){
   document.getElementById("cargando").classList.add("oculto");
@@ -632,23 +715,8 @@ function dibujarTodo(datos){
   document.getElementById("etc").textContent     = num(ultimo.etc_ajustada_mm) + " mm";
   document.getElementById("lluvia7").textContent = num(lluvia7) + " mm";
 
-  // --- recomendación ---
-  const caja = document.getElementById("recomendacion");
-  if(ultimo.pct_au < UMBRAL_RIEGO){
-    const neta = deficitMM, bruta = deficitMM / EFICIENCIA;
-    caja.className = "recomendacion";
-    caja.innerHTML =
-      "<h3>Conviene regar</h3>" +
-      "<div class='lamina'>" + num(bruta) + " mm</div>" +
-      "<p>Lámina bruta con " + Math.round(EFICIENCIA*100) + " % de eficiencia. " +
-      "Neta: " + num(neta) + " mm. Revisá el pronóstico antes de aplicar.</p>";
-  } else {
-    caja.className = "recomendacion ok";
-    caja.innerHTML =
-      "<h3>Sin necesidad de riego</h3>" +
-      "<p>El agua útil está por encima del umbral de " + UMBRAL_RIEGO + " %. " +
-      "Faltan " + num(deficitMM) + " mm para capacidad de campo.</p>";
-  }
+  ULTIMO_CSV = {pct_au: ultimo.pct_au, deficitMM: deficitMM};
+  pintarRecomendacion();
 
   dibujarPerfil(ultimo, cat);
   dibujarSerie(datos);

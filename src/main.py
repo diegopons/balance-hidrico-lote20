@@ -444,6 +444,7 @@ def main(config_path: str = "config.yaml") -> int:
         # --- Proyección con pronóstico (no toca el estado ni el CSV) ---
         linea_pronostico = None
         df_pronostico_pub = None
+        ajuste_riego = None
         cfg_pron = cfg.get("pronostico", {})
         if cfg_pron.get("habilitado", False) and any(
                 n == "openmeteo" for n, _ in fuentes):
@@ -476,6 +477,35 @@ def main(config_path: str = "config.yaml") -> int:
                 )
                 if linea_pronostico:
                     log.info("Pronóstico: %s", linea_pronostico)
+
+                # Lámina descontando la lluvia de los próximos días. Se
+                # calcula siempre; quien la publica decide si corresponde
+                # mostrarla (solo si el lote está por debajo del umbral).
+                cfg_tg_aj = cfg.get("telegram", {})
+                falta_hoy = max(
+                    0.0,
+                    float(ultimo["au_max_mm"])
+                    * (float(cfg_tg_aj.get("reposicion_objetivo_pct", 100.0)) / 100.0)
+                    - float(ultimo["au_real_mm"]),
+                )
+                ajuste_riego = mod_pronostico.lamina_ajustada(
+                    falta_hoy,
+                    df_fc,
+                    eficiencia_aplicacion=float(
+                        cfg_tg_aj.get("eficiencia_aplicacion", 0.85)),
+                    dias_descuento=int(cfg_pron.get("dias_descuento", 3)),
+                    umbral_lluvia_efectiva_mm=cfg["balance"].get(
+                        "umbral_lluvia_efectiva_mm", 15.0),
+                )
+                if ajuste_riego:
+                    log.info(
+                        "Riego: reposición total %.1f mm netos | ajustada "
+                        "%.1f mm netos (descuenta %.1f mm hasta %s).",
+                        falta_hoy,
+                        ajuste_riego["lamina_neta_mm"],
+                        ajuste_riego["descuento_mm"],
+                        ajuste_riego["hasta"],
+                    )
             except Exception as e:  # noqa: BLE001
                 # El balance ya está calculado y guardado: un fallo del
                 # pronóstico no debe tumbar la corrida.
@@ -499,6 +529,7 @@ def main(config_path: str = "config.yaml") -> int:
                     detalle_clima=detalle_clima,
                     linea_pronostico=linea_pronostico,
                     df_pronostico=df_pronostico_pub,
+                    ajuste_riego=ajuste_riego,
                 ),
                 destino=cfg.get("rutas", {}).get(
                     "estado_json_publico", "docs/estado_actual.json"),
@@ -550,6 +581,7 @@ def main(config_path: str = "config.yaml") -> int:
                         eficiencia_aplicacion=cfg_tg.get("eficiencia_aplicacion", 0.85),
                         reposicion_objetivo_pct=cfg_tg.get("reposicion_objetivo_pct", 100.0),
                         linea_pronostico=linea_pronostico,
+                        ajuste_riego=ajuste_riego,
                     )
                     enviar_telegram(tg_token, tg_chat_id, mensaje)
                 else:

@@ -44,6 +44,7 @@ def construir_estado(
     detalle_clima: Optional[dict] = None,
     linea_pronostico: Optional[str] = None,
     df_pronostico: Optional[pd.DataFrame] = None,
+    ajuste_riego: Optional[dict] = None,
     dias_detalle: int = 14,
 ) -> dict:
     """Arma el diccionario del estado a partir del DataFrame de resultados."""
@@ -89,6 +90,20 @@ def construir_estado(
                 round(falta / eficiencia, 1) if pct < umbral else 0.0
             ),
             "eficiencia_de_aplicacion": eficiencia,
+            # Dos láminas, a propósito. La "sugerida" es la necesidad del
+            # cultivo hoy; la "ajustada" es la decisión de manejo con el
+            # pronóstico a la vista. El agente tiene que dar las dos.
+            "riego_ajustado_por_pronostico": (
+                {
+                    "neto_mm": ajuste_riego["lamina_neta_mm"],
+                    "bruto_mm": ajuste_riego["lamina_bruta_mm"],
+                    "lluvia_descontada_mm": ajuste_riego["descuento_mm"],
+                    "lluvia_pronosticada_mm": ajuste_riego["lluvia_pronosticada_mm"],
+                    "ventana_dias": ajuste_riego["ventana_dias"],
+                    "hasta": ajuste_riego["hasta"],
+                }
+                if ajuste_riego and pct < umbral else None
+            ),
             "ndvi": round(float(u["ndvi"]), 3),
             "profundidad_raiz_cm": round(float(u["prof_raiz_cm"]), 1),
             "consumo_del_dia_mm": round(float(u["etc_ajustada_mm"]), 2),
@@ -176,8 +191,19 @@ def construir_estado(
             "cambiado desde entonces."
         )
     if estado["estado_actual"]["necesita_riego"]:
+        aj = estado["estado_actual"]["riego_ajustado_por_pronostico"]
         prox = (estado.get("pronostico") or {}).get("proxima_lluvia")
-        if prox:
+        if aj:
+            advertencias.append(
+                f"Hay dos láminas y hay que dar las DOS: la de reposición "
+                f"total ({estado['estado_actual']['riego_sugerido_bruto_mm']:.1f} mm "
+                f"brutos), que es lo que falta hoy sin mirar el pronóstico, y la "
+                f"ajustada ({aj['bruto_mm']:.1f} mm brutos), que descuenta "
+                f"{aj['lluvia_descontada_mm']:.1f} mm de lluvia efectiva esperada "
+                f"hasta el {aj['hasta']}. La ajustada apuesta a que esa lluvia "
+                f"llega; si no llega, falta reponer la diferencia."
+            )
+        elif prox:
             advertencias.append(
                 f"Se esperan {prox['mm']:.0f} mm el {prox['fecha']}, en "
                 f"{prox['en_dias']} día(s): conviene descontarlos de la lámina o "

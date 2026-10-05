@@ -96,6 +96,7 @@ def armar_mensaje(
     eficiencia_aplicacion: float = 0.85,
     reposicion_objetivo_pct: float = 100.0,
     linea_pronostico: str | None = None,
+    ajuste_riego: dict | None = None,
 ) -> str:
     etiqueta, emoji = clasificar_condicion(pct_au)
     deficit_mm = round(max(0.0, au_max_mm - au_real_mm), 1)
@@ -118,14 +119,39 @@ def armar_mensaje(
         )
         lineas += [
             "",
-            f"💧 <b>Riego sugerido</b> (por debajo del umbral de {umbral_riego_pct:.0f}%)",
-            f"   Lámina neta: <b>{riego['lamina_neta_mm']:.1f} mm</b>",
-            f"   Lámina bruta: <b>{riego['lamina_bruta_mm']:.1f} mm</b> "
-            f"(ef. {eficiencia_aplicacion:.0%})",
+            f"💧 <b>Riego</b> (por debajo del umbral de {umbral_riego_pct:.0f}%)",
             "",
-            "<i>Verificar pronóstico antes de aplicar: la lámina no "
-            "contempla lluvias previstas.</i>",
+            "<b>1 · Reposición total</b> — lo que falta hoy, sin mirar el cielo",
+            f"   Neta: <b>{riego['lamina_neta_mm']:.1f} mm</b>  |  "
+            f"Bruta: <b>{riego['lamina_bruta_mm']:.1f} mm</b> "
+            f"(ef. {eficiencia_aplicacion:.0%})",
         ]
+        if ajuste_riego:
+            # El JSON guarda la fecha en ISO; el productor la lee en dd/mm.
+            try:
+                a, m, d = str(ajuste_riego["hasta"]).split("-")
+                hasta = f"{int(d)}/{int(m)}"
+            except ValueError:
+                hasta = str(ajuste_riego["hasta"])
+            lineas += [
+                "",
+                f"<b>2 · Ajustada al pronóstico</b> — descontando la lluvia "
+                f"esperada hasta el {hasta}",
+                f"   Neta: <b>{ajuste_riego['lamina_neta_mm']:.1f} mm</b>  |  "
+                f"Bruta: <b>{ajuste_riego['lamina_bruta_mm']:.1f} mm</b>",
+                f"   <i>Se descontaron {ajuste_riego['descuento_mm']:.1f} mm "
+                f"efectivos de los {ajuste_riego['lluvia_pronosticada_mm']:.1f} mm "
+                f"pronosticados en {ajuste_riego['ventana_dias']} días.</i>",
+                "",
+                "<i>La ajustada apuesta a que esa lluvia llega. Si no llega, "
+                "falta reponer la diferencia.</i>",
+            ]
+        else:
+            lineas += [
+                "",
+                "<i>Verificar pronóstico antes de aplicar: la lámina no "
+                "contempla lluvias previstas.</i>",
+            ]
     else:
         lineas += ["", "Sin necesidad de riego por ahora."]
 
