@@ -4871,3 +4871,9 @@
 2026-10-05 14:07:06,211 [INFO] src.publicar_estado: Estado publicado en docs/estado_actual.json (2026-10-03, 40 % de agua útil).
 2026-10-05 14:07:06,684 [INFO] src.notificaciones: Notificación de Telegram enviada.
 2026-10-05 14:07:06,686 [INFO] main: Corrida finalizada OK.
+2026-10-05 14:19:15,599 [INFO] main: ========== Nueva corrida de Balance Hídrico ==========
+2026-10-05 14:19:15,600 [INFO] main: Parámetros recibidos del formulario: telegram.modo=(usar config)
+2026-10-05 14:19:15,600 [INFO] src.aoi: AOI cargado desde GeoJSON: lote.geojson
+2026-10-05 14:19:15,627 [INFO] main: Lote cargado: 1.96 ha. BBox=(-63.741565, -31.858588, -63.739237, -31.856921)
+2026-10-05 14:19:15,627 [INFO] src.estado: Estado previo cargado: {'ultima_fecha_procesada': '2026-10-03', 'au_real_mm': 124.95776943835074, 'prof_raiz_cm': 200.0, 'ultimo_ndvi_valido': 0.349403977394104}
+2026-10-05 14:19:15,630 [INFO] main: Nada nuevo para procesar todavía (último día procesado: 2026-10-03; próximo disponible recién el 2026-10-04 por el rezago de datos).
