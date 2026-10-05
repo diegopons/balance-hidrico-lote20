@@ -1387,7 +1387,31 @@ async function api(ruta, token, opciones = {}){
 
 // Un commit con los dos archivos a la vez, vía la API de árboles de Git.
 // Hacerlo en un solo commit evita quedar a mitad de camino si algo falla.
-async function commitearArchivos(token, repo, archivos, mensaje){
+//
+// El commit se arma en cuatro llamadas: leer la punta de la rama, crear el
+// árbol, crear el commit y mover la rama. Entre la primera y la última pueden
+// pasar varios segundos, y si en ese rato la corrida automática de GitHub
+// Actions escribe sus resultados, la rama ya avanzó y mover la punta falla con
+// "422 — Update is not a fast forward". No es un conflicto de contenido: los
+// archivos son distintos. Alcanza con volver a leer la punta y rehacerlo.
+async function commitearArchivos(token, repo, archivos, mensaje, intentos = 5){
+  let ultimo;
+  for(let i = 0; i < intentos; i++){
+    try {
+      return await commitearUnaVez(token, repo, archivos, mensaje);
+    } catch(err){
+      ultimo = err;
+      if(err.status !== 422 && err.status !== 409) throw err;
+      if(i < intentos - 1){
+        anotar(`La rama avanzó mientras se escribía; reintento ${i + 1} de ${intentos - 1}…`);
+        await new Promise(r => setTimeout(r, 900 * (i + 1)));
+      }
+    }
+  }
+  throw ultimo;
+}
+
+async function commitearUnaVez(token, repo, archivos, mensaje){
   const base = `/repos/${repo.propietario}/${repo.nombre}`;
 
   const ref = await api(`${base}/git/ref/heads/${repo.rama}`, token);
@@ -1705,6 +1729,7 @@ document.getElementById('btn-calicata').addEventListener('click', async () => {
     if(err.status === 401) anotar('Token rechazado (401).', 'err');
     else if(err.status === 403 || err.status === 404)
       anotar('Sin permiso (' + err.status + ') o no existe config.yaml.', 'err');
+    else if(err.status === 422) anotar('La rama del repositorio cambió varias veces mientras se escribía (422). Suele pasar si hay una corrida de GitHub Actions en curso: esperá a que termine y probá de nuevo.', 'err');
     else anotar('Error: ' + err.message, 'err');
   } finally {
     btn.disabled = false;
@@ -1770,6 +1795,8 @@ document.getElementById('btn-defaults').addEventListener('click', async () => {
       anotar('Token rechazado (401).', 'err');
     } else if(err.status === 403 || err.status === 404){
       anotar('Sin permiso (' + err.status + ') o no existe config.yaml en el repositorio.', 'err');
+    } else if(err.status === 422){
+      anotar('La rama del repositorio cambió varias veces mientras se escribía (422). Suele pasar si hay una corrida de GitHub Actions en curso: esperá a que termine y probá de nuevo.', 'err');
     } else {
       anotar('Error: ' + err.message, 'err');
     }
@@ -1857,6 +1884,8 @@ document.getElementById('btn-guardar').addEventListener('click', async () => {
              'con permisos de Contents y Actions en lectura y escritura.', 'err');
     } else if(err.status === 409){
       anotar('El repositorio cambió mientras se guardaba. Reintentá.', 'err');
+    } else if(err.status === 422){
+      anotar('La rama del repositorio cambió varias veces mientras se escribía (422). Suele pasar si hay una corrida de GitHub Actions en curso: esperá a que termine y probá de nuevo.', 'err');
     } else {
       anotar('Error: ' + err.message, 'err');
     }
