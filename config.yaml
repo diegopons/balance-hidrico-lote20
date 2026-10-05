@@ -8,7 +8,7 @@ aoi:
   archivo: "aoi/lote.geojson"
 
 campana:
-  fecha_siembra: "2026-05-23"      # usada solo la primera vez (estado inicial)
+  fecha_siembra: "2026-05-28"      # usada solo la primera vez (estado inicial)
   au_real_inicial_mm: 40.0
   prof_raiz_inicial_cm: 10
 
@@ -173,7 +173,7 @@ mapas:
 #   TELEGRAM_CHAT_ID     -> id del chat/grupo donde mandar el aviso
 telegram:
   habilitado: true
-  nombre_lote: "Lote 20"
+  nombre_lote: "lote_6"
 
   # Cuándo mandar mensaje:
   #   cruce   -> solo cuando el %AU cruza el umbral hacia abajo (recomendado:
