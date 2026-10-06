@@ -4968,3 +4968,33 @@
 2026-10-05 17:46:15,650 [INFO] src.publicar_estado: Estado publicado en docs/estado_actual.json (2026-10-03, 71 % de agua útil).
 2026-10-05 17:46:15,651 [INFO] main: Sin condiciones para notificar (modo=(usar config)).
 2026-10-05 17:46:15,651 [INFO] main: Corrida finalizada OK.
+2026-10-06 15:39:13,137 [INFO] main: ========== Nueva corrida de Balance Hídrico ==========
+2026-10-06 15:39:13,137 [INFO] src.aoi: AOI cargado desde GeoJSON: lote.geojson
+2026-10-06 15:39:13,154 [INFO] main: Lote cargado: 24.95 ha. BBox=(-63.744628, -31.87461, -63.738492, -31.86969)
+2026-10-06 15:39:13,154 [WARNING] src.estado: ⚠️  Cambió alguno de los datos de base —lote, fecha de siembra, fuente de clima o perfil de suelo— (huella 9c32608870716f83 -> efd63388437375b2). El balance acumulado no corresponde: se reinicia desde cero.
+2026-10-06 15:39:13,154 [INFO] src.estado: Se inicializa el balance: AU=40.0 mm, profundidad de raíz=1 cm.
+2026-10-06 15:39:13,154 [WARNING] src.estado: Serie anterior archivada como balance_hidrico_lote20_hasta_20261006-153913.csv (cambió el lote, la siembra, el clima o el perfil de suelo). Se empieza una serie nueva.
+2026-10-06 15:39:13,156 [INFO] main: Procesando rango nuevo: 2026-05-28 -> 2026-10-04
+2026-10-06 15:39:13,156 [INFO] main: Descargando NDVI (Sentinel-2 / CDSE Statistical API)...
+2026-10-06 15:39:14,289 [INFO] src.auth_cdse: Token CDSE obtenido, válido por 1800 s.
+2026-10-06 15:39:18,612 [INFO] main: NDVI: 15 fechas con imagen utilizable en el rango.
+2026-10-06 15:39:18,613 [INFO] main: Clima: fuentes en orden ['siga', 'openmeteo']
+2026-10-06 15:39:20,436 [INFO] src.clima_siga: SIGA: estación 'Manfredi - EEA Manfredi' (A872907) a 1.6 km del lote.
+2026-10-06 15:39:27,681 [INFO] src.clima_siga: SIGA A872907: 5064 días (2006-07-09 a 2026-10-05).
+2026-10-06 15:39:27,687 [INFO] src.clima_siga: SIGA: 119 días con dato. Lluvia 66.2 mm, ETo 256.7 mm.
+2026-10-06 15:39:28,364 [INFO] src.clima_openmeteo: Open-Meteo: 130 días (archivo=130). Último dato: 2026-10-04.
+2026-10-06 15:39:28,367 [INFO] src.clima: Clima · siga aportó 118 días de lluvia y 117 de ETo.
+2026-10-06 15:39:28,367 [INFO] src.clima: Clima · openmeteo aportó 12 días de lluvia y 13 de ETo.
+2026-10-06 15:39:28,367 [INFO] main: Clima · origen de los datos — lluvia: siga 118d, openmeteo 12d | ETo: siga 117d, openmeteo 13d
+2026-10-06 15:39:28,367 [INFO] main: Clima · estación SIGA usada: Manfredi - EEA Manfredi (A872907) a 1.6 km.
+2026-10-06 15:39:28,370 [INFO] main: NDVI: 15 observaciones reales, 115 días interpolados, 4 sostenidos al final; hueco mayor entre imágenes: 20 días.
+2026-10-06 15:39:28,407 [INFO] src.estado: CSV actualizado: data/balance_hidrico_lote20.csv (130 filas totales)
+2026-10-06 15:39:28,417 [INFO] src.mapas_ndvi: Generando mosaico de NDVI con 8 fechas...
+2026-10-06 15:39:36,114 [INFO] src.mapas_ndvi: Mosaico guardado en docs/ndvi_mosaico.png (8 fechas).
+2026-10-06 15:39:36,114 [INFO] main: Última fecha procesada: 2026-10-04 | %AU=69.0 | AU real=217.5 mm | NDVI=0.345
+2026-10-06 15:39:36,869 [INFO] src.clima_openmeteo: Pronóstico: 9 días, hasta 2026-10-15. Lluvia esperada: 50.6 mm.
+2026-10-06 15:39:36,872 [INFO] main: Pronóstico: Proyección a 9 días: no cruza el umbral; quedaría en 82 % el 15/10. Lluvia esperada: 51 mm.
+2026-10-06 15:39:36,873 [INFO] main: Riego: reposición total 97.8 mm netos | ajustada 71.9 mm netos (descuenta 25.9 mm hasta 2026-10-09).
+2026-10-06 15:39:36,875 [INFO] src.publicar_estado: Estado publicado en docs/estado_actual.json (2026-10-04, 69 % de agua útil).
+2026-10-06 15:39:37,489 [INFO] src.notificaciones: Notificación de Telegram enviada.
+2026-10-06 15:39:37,489 [INFO] main: Corrida finalizada OK.
