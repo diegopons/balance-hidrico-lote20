@@ -5706,3 +5706,29 @@
 2026-10-27 15:05:48,501 [INFO] src.publicar_estado: Estado publicado en docs/estado_actual.json (2026-10-25, 100 % de agua útil).
 2026-10-27 15:05:48,946 [INFO] src.notificaciones: Notificación de Telegram enviada.
 2026-10-27 15:05:48,947 [INFO] main: Corrida finalizada OK.
+2026-10-28 15:41:01,733 [INFO] main: ========== Nueva corrida de Balance Hídrico ==========
+2026-10-28 15:41:01,733 [INFO] src.aoi: AOI cargado desde GeoJSON: lote.geojson
+2026-10-28 15:41:01,759 [INFO] main: Lote cargado: 92.05 ha. BBox=(-63.872645, -31.729632, -63.861101, -31.719995)
+2026-10-28 15:41:01,759 [INFO] src.estado: Estado previo cargado: {'ultima_fecha_procesada': '2026-10-25', 'au_real_mm': 315.00100000000003, 'prof_raiz_cm': 200.0, 'ultimo_ndvi_valido': 0.06709372997283936}
+2026-10-28 15:41:01,761 [INFO] main: Procesando rango nuevo: 2026-10-26 -> 2026-10-26
+2026-10-28 15:41:01,761 [INFO] main: Descargando NDVI (Sentinel-2 / CDSE Statistical API)...
+2026-10-28 15:41:02,940 [INFO] src.auth_cdse: Token CDSE obtenido, válido por 1800 s.
+2026-10-28 15:41:03,816 [INFO] src.ndvi_sentinelhub: NDVI: 0 fecha(s) con dato de 0 pasada(s). Descartadas: 0 por cobertura, 0 sin píxeles, 0 fuera de rango.
+2026-10-28 15:41:03,818 [INFO] main: NDVI: 0 fechas con imagen utilizable en el rango.
+2026-10-28 15:41:03,818 [INFO] main: Clima: fuentes en orden ['siga', 'openmeteo']
+2026-10-28 15:41:05,655 [INFO] src.clima_siga: SIGA: estación 'INTA - Manfredi (EMC)' (NH0438) a 14.0 km del lote.
+2026-10-28 15:41:20,592 [INFO] src.clima_siga: SIGA NH0438: 16230 días (1969-09-01 a 2014-05-08).
+2026-10-28 15:41:20,605 [WARNING] src.clima: Fuente 'siga' no disponible: La estación NH0438 no tiene datos entre 2026-10-26 y 2026-10-26.
+2026-10-28 15:41:21,179 [INFO] src.clima_openmeteo: Open-Meteo: 1 días (archivo=1). Último dato: 2026-10-26.
+2026-10-28 15:41:21,184 [INFO] src.clima: Clima · openmeteo aportó 1 días de lluvia y 1 de ETo.
+2026-10-28 15:41:21,185 [INFO] main: Clima · origen de los datos — lluvia: openmeteo 1d | ETo: openmeteo 1d
+2026-10-28 15:41:21,185 [WARNING] main: Clima · 'siga' no se pudo usar: La estación NH0438 no tiene datos entre 2026-10-26 y 2026-10-26.
+2026-10-28 15:41:21,188 [INFO] main: NDVI: 0 observaciones reales, 0 días interpolados, 1 sostenidos al final; hueco mayor entre imágenes: 0 días.
+2026-10-28 15:41:21,195 [INFO] src.estado: CSV actualizado: data/balance_hidrico_lote20.csv (152 filas totales)
+2026-10-28 15:41:21,196 [INFO] main: Última fecha procesada: 2026-10-26 | %AU=99.8 | AU real=314.6 mm | NDVI=0.067
+2026-10-28 15:41:21,415 [INFO] src.clima_openmeteo: Pronóstico: 9 días, hasta 2026-11-06. Lluvia esperada: 45.0 mm.
+2026-10-28 15:41:21,421 [INFO] main: Pronóstico: Proyección a 9 días: no cruza el umbral; quedaría en 100 % el 06/11. Lluvia esperada: 45 mm.
+2026-10-28 15:41:21,421 [INFO] main: Riego: reposición total 0.6 mm netos | ajustada 0.0 mm netos (descuenta 0.6 mm hasta 2026-10-31).
+2026-10-28 15:41:21,425 [INFO] src.publicar_estado: Estado publicado en docs/estado_actual.json (2026-10-26, 100 % de agua útil).
+2026-10-28 15:41:21,979 [INFO] src.notificaciones: Notificación de Telegram enviada.
+2026-10-28 15:41:21,980 [INFO] main: Corrida finalizada OK.

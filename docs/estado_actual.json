@@ -1,50 +1,41 @@
 {
-  "generado_utc": "2026-10-27T15:05:48Z",
+  "generado_utc": "2026-10-28T15:41:21Z",
   "lote": {
     "nombre": "lote_6",
     "area_ha": 92.05
   },
   "campana": {
     "fecha_siembra": "2026-05-28",
-    "dias_desde_siembra": 150
+    "dias_desde_siembra": 151
   },
   "estado_actual": {
-    "fecha_del_dato": "2026-10-25",
+    "fecha_del_dato": "2026-10-26",
     "dias_de_atraso": 2,
-    "agua_util_mm": 315.0,
+    "agua_util_mm": 314.6,
     "agua_util_maxima_mm": 315.2,
-    "porcentaje_agua_util": 99.9,
+    "porcentaje_agua_util": 99.8,
     "condicion": "cómodo",
     "umbral_de_riego_pct": 50.0,
     "necesita_riego": false,
-    "falta_para_capacidad_de_campo_mm": 0.2,
+    "falta_para_capacidad_de_campo_mm": 0.6,
     "riego_sugerido_neto_mm": 0.0,
     "riego_sugerido_bruto_mm": 0.0,
     "eficiencia_de_aplicacion": 0.85,
     "riego_ajustado_por_pronostico": null,
     "ndvi": 0.067,
     "profundidad_raiz_cm": 200.0,
-    "consumo_del_dia_mm": 0.35
+    "consumo_del_dia_mm": 0.36
   },
   "acumulados_de_campana": {
     "lluvia_mm": 171.8,
     "lluvia_efectiva_mm": 161.8,
     "riego_aplicado_mm": 0.0,
-    "eto_mm": 388.0,
-    "consumo_del_cultivo_mm": 38.9,
+    "eto_mm": 391.6,
+    "consumo_del_cultivo_mm": 39.2,
     "percolacion_mm": 39.1,
-    "dias_calculados": 151
+    "dias_calculados": 152
   },
   "ultimos_dias": [
-    {
-      "fecha": "2026-10-12",
-      "lluvia_mm": 18.3,
-      "eto_mm": 1.45,
-      "consumo_mm": 0.14,
-      "agua_util_mm": 315.2,
-      "porcentaje_agua_util": 100.0,
-      "ndvi": 0.067
-    },
     {
       "fecha": "2026-10-13",
       "lluvia_mm": 2.9,
@@ -161,68 +152,77 @@
       "agua_util_mm": 315.0,
       "porcentaje_agua_util": 99.9,
       "ndvi": 0.067
+    },
+    {
+      "fecha": "2026-10-26",
+      "lluvia_mm": 0.0,
+      "eto_mm": 3.63,
+      "consumo_mm": 0.36,
+      "agua_util_mm": 314.6,
+      "porcentaje_agua_util": 99.8,
+      "ndvi": 0.067
     }
   ],
   "origen_de_los_datos": {
     "fuentes_que_fallaron": {
-      "siga": "La estación NH0438 no tiene datos entre 2026-10-25 y 2026-10-25."
+      "siga": "La estación NH0438 no tiene datos entre 2026-10-26 y 2026-10-26."
     }
   },
   "pronostico": {
-    "resumen": "Proyección a 9 días: no cruza el umbral; quedaría en 100 % el 05/11. Lluvia esperada: 32 mm.",
+    "resumen": "Proyección a 9 días: no cruza el umbral; quedaría en 100 % el 06/11. Lluvia esperada: 45 mm.",
     "dias": 9,
-    "lluvia_esperada_mm": 31.7,
+    "lluvia_esperada_mm": 45.0,
     "por_dia": [
       {
-        "fecha": "2026-10-28",
-        "lluvia_mm": 0.4,
-        "eto_mm": 4.9
-      },
-      {
         "fecha": "2026-10-29",
-        "lluvia_mm": 2.3,
-        "eto_mm": 4.53
+        "lluvia_mm": 0.5,
+        "eto_mm": 5.04
       },
       {
         "fecha": "2026-10-30",
-        "lluvia_mm": 1.4,
-        "eto_mm": 5.0
+        "lluvia_mm": 1.3,
+        "eto_mm": 5.08
       },
       {
         "fecha": "2026-10-31",
-        "lluvia_mm": 0.9,
-        "eto_mm": 4.53
+        "lluvia_mm": 0.3,
+        "eto_mm": 5.13
       },
       {
         "fecha": "2026-11-01",
-        "lluvia_mm": 5.7,
-        "eto_mm": 4.42
+        "lluvia_mm": 9.3,
+        "eto_mm": 4.36
       },
       {
         "fecha": "2026-11-02",
-        "lluvia_mm": 15.0,
-        "eto_mm": 3.6
+        "lluvia_mm": 0.0,
+        "eto_mm": 5.13
       },
       {
         "fecha": "2026-11-03",
-        "lluvia_mm": 4.2,
-        "eto_mm": 4.14
+        "lluvia_mm": 33.0,
+        "eto_mm": 3.61
       },
       {
         "fecha": "2026-11-04",
         "lluvia_mm": 0.0,
-        "eto_mm": 4.02
+        "eto_mm": 6.22
       },
       {
         "fecha": "2026-11-05",
-        "lluvia_mm": 1.8,
-        "eto_mm": 4.4
+        "lluvia_mm": 0.6,
+        "eto_mm": 5.15
+      },
+      {
+        "fecha": "2026-11-06",
+        "lluvia_mm": 0.0,
+        "eto_mm": 5.77
       }
     ],
     "proxima_lluvia": {
       "fecha": "2026-11-01",
-      "en_dias": 5,
-      "mm": 5.7
+      "en_dias": 4,
+      "mm": 9.3
     }
   },
   "calidad_ndvi": {
