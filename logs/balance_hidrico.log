@@ -5982,3 +5982,27 @@
 2026-11-07 15:22:42,803 [INFO] src.publicar_estado: Estado publicado en docs/estado_actual.json (2026-11-05, 100 % de agua útil).
 2026-11-07 15:22:43,525 [INFO] src.notificaciones: Notificación de Telegram enviada.
 2026-11-07 15:22:43,526 [INFO] main: Corrida finalizada OK.
+2026-11-08 15:43:46,198 [INFO] main: ========== Nueva corrida de Balance Hídrico ==========
+2026-11-08 15:43:46,198 [INFO] src.aoi: AOI cargado desde GeoJSON: lote.geojson
+2026-11-08 15:43:46,216 [INFO] main: Lote cargado: 92.05 ha. BBox=(-63.872645, -31.729632, -63.861101, -31.719995)
+2026-11-08 15:43:46,216 [INFO] src.estado: Estado previo cargado: {'ultima_fecha_procesada': '2026-11-05', 'au_real_mm': 314.55499999999995, 'prof_raiz_cm': 200.0, 'ultimo_ndvi_valido': 0.06709372997283936}
+2026-11-08 15:43:46,217 [INFO] main: Procesando rango nuevo: 2026-11-06 -> 2026-11-06
+2026-11-08 15:43:46,217 [INFO] main: Descargando NDVI (Sentinel-2 / CDSE Statistical API)...
+2026-11-08 15:43:47,539 [INFO] src.auth_cdse: Token CDSE obtenido, válido por 1800 s.
+2026-11-08 15:43:48,384 [INFO] src.ndvi_sentinelhub: NDVI: 0 fecha(s) con dato de 0 pasada(s). Descartadas: 0 por cobertura, 0 sin píxeles, 0 fuera de rango.
+2026-11-08 15:43:48,385 [INFO] main: NDVI: 0 fechas con imagen utilizable en el rango.
+2026-11-08 15:43:48,386 [INFO] main: Clima: fuentes en orden ['siga', 'openmeteo']
+2026-11-08 15:43:49,435 [WARNING] src.clima: Fuente 'siga' no disponible: No se pudo consultar el SIGA (https://siga.inta.gob.ar/CdnaUV0iiERRpFQE.php?param_type=estacion&param_value=): HTTP Error 404: Not Found
+2026-11-08 15:43:49,933 [INFO] src.clima_openmeteo: Open-Meteo: 1 días (archivo=1). Último dato: 2026-11-06.
+2026-11-08 15:43:49,936 [INFO] src.clima: Clima · openmeteo aportó 1 días de lluvia y 1 de ETo.
+2026-11-08 15:43:49,937 [INFO] main: Clima · origen de los datos — lluvia: openmeteo 1d | ETo: openmeteo 1d
+2026-11-08 15:43:49,937 [WARNING] main: Clima · 'siga' no se pudo usar: No se pudo consultar el SIGA (https://siga.inta.gob.ar/CdnaUV0iiERRpFQE.php?param_type=estacion&param_value=): HTTP Error 404: Not Found
+2026-11-08 15:43:49,939 [INFO] main: NDVI: 0 observaciones reales, 0 días interpolados, 1 sostenidos al final; hueco mayor entre imágenes: 0 días.
+2026-11-08 15:43:49,944 [INFO] src.estado: CSV actualizado: data/balance_hidrico_lote20.csv (163 filas totales)
+2026-11-08 15:43:49,945 [INFO] main: Última fecha procesada: 2026-11-06 | %AU=99.8 | AU real=314.7 mm | NDVI=0.067
+2026-11-08 15:43:50,456 [INFO] src.clima_openmeteo: Pronóstico: 9 días, hasta 2026-11-17. Lluvia esperada: 156.6 mm.
+2026-11-08 15:43:50,459 [INFO] main: Pronóstico: Proyección a 9 días: no cruza el umbral; quedaría en 100 % el 17/11. Lluvia esperada: 157 mm.
+2026-11-08 15:43:50,460 [INFO] main: Riego: reposición total 0.6 mm netos | ajustada 0.0 mm netos (descuenta 0.6 mm hasta 2026-11-11).
+2026-11-08 15:43:50,462 [INFO] src.publicar_estado: Estado publicado en docs/estado_actual.json (2026-11-06, 100 % de agua útil).
+2026-11-08 15:43:51,127 [INFO] src.notificaciones: Notificación de Telegram enviada.
+2026-11-08 15:43:51,128 [INFO] main: Corrida finalizada OK.
