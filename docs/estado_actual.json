@@ -1,15 +1,15 @@
 {
-  "generado_utc": "2026-11-24T19:52:48Z",
+  "generado_utc": "2026-11-25T18:56:52Z",
   "lote": {
     "nombre": "lote_6",
     "area_ha": 92.05
   },
   "campana": {
     "fecha_siembra": "2026-05-28",
-    "dias_desde_siembra": 178
+    "dias_desde_siembra": 179
   },
   "estado_actual": {
-    "fecha_del_dato": "2026-11-22",
+    "fecha_del_dato": "2026-11-23",
     "dias_de_atraso": 2,
     "agua_util_mm": 315.2,
     "agua_util_maxima_mm": 315.2,
@@ -24,27 +24,18 @@
     "riego_ajustado_por_pronostico": null,
     "ndvi": 0.067,
     "profundidad_raiz_cm": 200.0,
-    "consumo_del_dia_mm": 0.43
+    "consumo_del_dia_mm": 0.31
   },
   "acumulados_de_campana": {
-    "lluvia_mm": 272.1,
-    "lluvia_efectiva_mm": 258.2,
+    "lluvia_mm": 290.5,
+    "lluvia_efectiva_mm": 275.2,
     "riego_aplicado_mm": 0.0,
-    "eto_mm": 528.9,
-    "consumo_del_cultivo_mm": 53.0,
-    "percolacion_mm": 121.3,
-    "dias_calculados": 179
+    "eto_mm": 532.0,
+    "consumo_del_cultivo_mm": 53.3,
+    "percolacion_mm": 137.9,
+    "dias_calculados": 180
   },
   "ultimos_dias": [
-    {
-      "fecha": "2026-11-09",
-      "lluvia_mm": 0.0,
-      "eto_mm": 6.62,
-      "consumo_mm": 0.66,
-      "agua_util_mm": 313.8,
-      "porcentaje_agua_util": 99.5,
-      "ndvi": 0.067
-    },
     {
       "fecha": "2026-11-10",
       "lluvia_mm": 4.6,
@@ -161,6 +152,15 @@
       "agua_util_mm": 315.2,
       "porcentaje_agua_util": 100.0,
       "ndvi": 0.067
+    },
+    {
+      "fecha": "2026-11-23",
+      "lluvia_mm": 18.4,
+      "eto_mm": 3.1,
+      "consumo_mm": 0.31,
+      "agua_util_mm": 315.2,
+      "porcentaje_agua_util": 100.0,
+      "ndvi": 0.067
     }
   ],
   "origen_de_los_datos": {
@@ -169,60 +169,60 @@
     }
   },
   "pronostico": {
-    "resumen": "Proyección a 9 días: no cruza el umbral; quedaría en 100 % el 03/12. Lluvia esperada: 38 mm.",
+    "resumen": "Proyección a 9 días: no cruza el umbral; quedaría en 100 % el 04/12. Lluvia esperada: 53 mm.",
     "dias": 9,
-    "lluvia_esperada_mm": 37.8,
+    "lluvia_esperada_mm": 52.8,
     "por_dia": [
-      {
-        "fecha": "2026-11-25",
-        "lluvia_mm": 0.0,
-        "eto_mm": 6.02
-      },
       {
         "fecha": "2026-11-26",
         "lluvia_mm": 0.0,
-        "eto_mm": 6.24
+        "eto_mm": 5.35
       },
       {
         "fecha": "2026-11-27",
         "lluvia_mm": 0.0,
-        "eto_mm": 6.59
+        "eto_mm": 6.33
       },
       {
         "fecha": "2026-11-28",
         "lluvia_mm": 0.0,
-        "eto_mm": 6.9
+        "eto_mm": 6.76
       },
       {
         "fecha": "2026-11-29",
         "lluvia_mm": 0.0,
-        "eto_mm": 6.98
+        "eto_mm": 7.12
       },
       {
         "fecha": "2026-11-30",
         "lluvia_mm": 0.0,
-        "eto_mm": 6.87
+        "eto_mm": 6.81
       },
       {
         "fecha": "2026-12-01",
-        "lluvia_mm": 1.2,
-        "eto_mm": 5.85
+        "lluvia_mm": 22.8,
+        "eto_mm": 4.43
       },
       {
         "fecha": "2026-12-02",
-        "lluvia_mm": 3.6,
-        "eto_mm": 3.88
+        "lluvia_mm": 6.4,
+        "eto_mm": 5.17
       },
       {
         "fecha": "2026-12-03",
-        "lluvia_mm": 33.0,
-        "eto_mm": 1.35
+        "lluvia_mm": 22.0,
+        "eto_mm": 2.02
+      },
+      {
+        "fecha": "2026-12-04",
+        "lluvia_mm": 1.6,
+        "eto_mm": 5.21
       }
     ],
     "proxima_lluvia": {
-      "fecha": "2026-12-03",
-      "en_dias": 9,
-      "mm": 33.0
+      "fecha": "2026-12-01",
+      "en_dias": 6,
+      "mm": 22.8
     }
   },
   "calidad_ndvi": {
